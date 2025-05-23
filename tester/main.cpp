@@ -99,6 +99,15 @@ void TestSerialize()
     std::shared_ptr<serialize::Test> t5 = serialize::ParamSerializer<serialize::Test>::FromStringPtr(params);
     auto param5 = serialize::ParamSerializer<serialize::Test>::ToString(t5);
     std::cout << "param5 = " << param5 << std::endl;
+
+    std::set<std::string> sets = {"a", "b", "c"};
+    auto setstr = serialize::JsonSerializer<std::set<std::string>>::ToString(sets);
+    std::cout << "sets = " << setstr << std::endl;
+
+    auto sets1 = serialize::JsonSerializer<std::set<std::string>>::FromString(setstr);
+    sets1.emplace("d");
+    auto setstr1 = serialize::JsonSerializer<std::set<std::string>>::ToString(sets1);
+    std::cout << "set1 = " << setstr1 << std::endl;
 }
 
 int main()

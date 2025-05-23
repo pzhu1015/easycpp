@@ -4,6 +4,8 @@ TARGET =
 
 SERVICE_BIN = tester.exe
 INCLUDES = -I$(CURDIR)/..
+INCLUDES += -I$(CURDIR)/../../cpp-httplib
+INCLUDES += -I$(CURDIR)/../../picojson
 
 CC = g++
 #debug -g添加调试信息

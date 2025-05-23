@@ -135,6 +135,8 @@ namespace serialize
 {
 typedef picojson::value Json;
 typedef picojson::object JsonObject;
+typedef picojson::null JsonNull;
+typedef picojson::array JsonArray;
 template<class T>
 class JsonSerializer
 {
@@ -177,110 +179,146 @@ public:
     }
 };
 
+template<>
+class JsonSerializer<std::set<std::string>>
+{
+public:
+    static std::string ToString(const std::set<std::string> &value)
+    {
+        Json json;
+        json.set<JsonArray>(JsonArray());
+        for (auto v: value)
+        {
+            json.get<JsonArray>().emplace_back(v);
+        }
+        return json.serialize(JSON_PRETY);
+    }
+
+    static std::set<std::string> FromString(const std::string &value)
+    {
+        std::set<std::string> values;
+        Json json;
+        auto err = picojson::parse(json, value);
+        if (!err.empty()) return values;
+        if (!json.is<JsonNull>() && json.is<JsonArray>())
+        {
+            auto &array = json.get<JsonArray>();
+            for (const auto &item : array)
+            {
+                if (!item.is<JsonNull>() && item.is<std::string>())
+                {
+                    values.emplace(item.get<std::string>());
+                }
+            }
+        }
+        return values;
+    }
+};
+
 class JsonSerialize
 {
 public:
     static void Serialize(const std::string &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            json.get<picojson::object>()[name] = Json(value);
+            json.get<JsonObject>()[name] = Json(value);
         }
     }
 
     static void Serialize(bool value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            json.get<picojson::object>()[name] = Json(value);
+            json.get<JsonObject>()[name] = Json(value);
         }
     }
     static void Serialize(float value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            json.get<picojson::object>()[name] = Json(value);
+            json.get<JsonObject>()[name] = Json(value);
         }
     }
 
     static void Serialize(double value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            json.get<picojson::object>()[name] = Json(value);
+            json.get<JsonObject>()[name] = Json(value);
         }
     }
 
     static void Serialize(int8_t value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            json.get<picojson::object>()[name] = Json((double)value);
+            json.get<JsonObject>()[name] = Json((double)value);
         }
     }
 
     static void Serialize(int16_t value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            json.get<picojson::object>()[name] = Json((double)value);
+            json.get<JsonObject>()[name] = Json((double)value);
         }
     }
 
     static void Serialize(int32_t value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            json.get<picojson::object>()[name] = Json((double)value);
+            json.get<JsonObject>()[name] = Json((double)value);
         }
     }
 
     static void Serialize(int64_t value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            json.get<picojson::object>()[name] = Json(value);
+            json.get<JsonObject>()[name] = Json(value);
         }
     }
 
     static void Serialize(uint8_t value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            json.get<picojson::object>()[name] = Json((double)value);
+            json.get<JsonObject>()[name] = Json((double)value);
         }
     }
 
     static void Serialize(uint16_t value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            json.get<picojson::object>()[name] = Json((double)value);
+            json.get<JsonObject>()[name] = Json((double)value);
         }
     }
 
     static void Serialize(uint32_t value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            json.get<picojson::object>()[name] = Json((double)value);
+            json.get<JsonObject>()[name] = Json((double)value);
         }
     }
 
     static void Serialize(uint64_t value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            json.get<picojson::object>()[name] = Json((int64_t)value);
+            json.get<JsonObject>()[name] = Json((int64_t)value);
         }
     }
 
     template<typename T>
     static void Serialize(const std::shared_ptr<T> &value, const std::string &name, Json &json)
     {
-        if (value != nullptr && !json.is<picojson::null>() && (json.is<picojson::object>() || json.is<std::string>()))
+        if (value != nullptr && !json.is<JsonNull>() && (json.is<JsonObject>() || json.is<std::string>()))
         {
-            json.get<picojson::object>()[name] = JsonSerializer<T>::ToJson(value);
+            json.get<JsonObject>()[name] = JsonSerializer<T>::ToJson(value);
         }
     }
 
@@ -289,9 +327,9 @@ public:
     typename std::enable_if<!std::is_enum<T>::value, void>::type
     static Serialize(const T &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && (json.is<picojson::object>() || json.is<std::string>()))
+        if (!json.is<JsonNull>() && (json.is<JsonObject>() || json.is<std::string>()))
         {
-            json.get<picojson::object>()[name] = JsonSerializer<T>::ToJson(value);
+            json.get<JsonObject>()[name] = JsonSerializer<T>::ToJson(value);
         }
     }
 
@@ -300,325 +338,325 @@ public:
     typename std::enable_if<std::is_enum<T>::value, void>::type
     static Serialize(const T &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>())
+        if (!json.is<JsonNull>())
         {
-            json.get<picojson::object>()[name] = Json(static_cast<double>(value));
+            json.get<JsonObject>()[name] = Json(static_cast<double>(value));
         }
     }
 
     static void Serialize(const std::vector<std::string> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back(v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::vector<float> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back(v);
 
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::vector<double> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back(v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::vector<int8_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
 
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::vector<int16_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::vector<int32_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::vector<int64_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back(v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::vector<uint8_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::vector<uint16_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::vector<uint32_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::vector<uint64_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((int64_t)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     template<typename T>
     static void Serialize(const std::vector<std::shared_ptr<T>> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value)
             {
                 array.emplace_back(JsonSerializer<T>::ToJson(v));
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     template<typename T>
     static void Serialize(const std::vector<T> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value)
             {
                 array.emplace_back(JsonSerializer<T>::ToJson(v));
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::list<std::string> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back(v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::list<float> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back(v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::list<double> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back(v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::list<int8_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::list<int16_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value)
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::list<int32_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value)
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::list<int64_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back(v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::list<uint8_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::list<uint16_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::list<uint32_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::list<uint64_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((int64_t)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
@@ -626,171 +664,171 @@ public:
     template<typename T>
     static void Serialize(const std::list<std::shared_ptr<T>> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value)
             {
                 array.emplace_back(JsonSerializer<T>::ToJson(v));
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     template<typename T>
     static void Serialize(const std::list<T> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value)
             {
                 array.emplace_back(JsonSerializer<T>::ToJson(v));
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::set<std::string> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back(v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::set<float> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back(v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::set<double> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back(v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::set<int8_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::set<int16_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::set<int32_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::set<int64_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back(v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::set<uint8_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::set<uint16_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::set<uint32_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((double)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void Serialize(const std::set<uint64_t> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value) 
             {
                 array.emplace_back((int64_t)v);
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
@@ -798,35 +836,35 @@ public:
     template<typename T>
     static void Serialize(const std::set<std::shared_ptr<T>> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value)
             {
                 array.emplace_back(JsonSerializer<T>::ToJson(v));
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     template<typename T>
     static void Serialize(const std::set<T> &value, const std::string &name, Json &json)
     {
-        if (!json.is<picojson::null>() && json.is<picojson::object>())
+        if (!json.is<JsonNull>() && json.is<JsonObject>())
         {
-            picojson::array array;
+            JsonArray array;
             for (const auto &v : value)
             {
                 array.emplace_back(JsonSerializer<T>::ToJson(v));
             }
-            json.get<picojson::object>()[name] = Json(array);
+            json.get<JsonObject>()[name] = Json(array);
         }
     }
 
     static void DeSerialize(std::string &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<std::string>())
+        if (!v.is<JsonNull>() && v.is<std::string>())
         {
             value = v.get<std::string>();
         }
@@ -835,7 +873,7 @@ public:
     static void DeSerialize(bool &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<bool>())
+        if (!v.is<JsonNull>() && v.is<bool>())
         {
             value = v.get<bool>();
         }
@@ -844,7 +882,7 @@ public:
     static void DeSerialize(float &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<double>())
+        if (!v.is<JsonNull>() && v.is<double>())
         {
             value = (float)v.get<double>();
         }
@@ -853,7 +891,7 @@ public:
     static void DeSerialize(double &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<double>())
+        if (!v.is<JsonNull>() && v.is<double>())
         {
             value = v.get<double>();
         }
@@ -862,7 +900,7 @@ public:
     static void DeSerialize(int8_t &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<double>())
+        if (!v.is<JsonNull>() && v.is<double>())
         {
             value = (int8_t)v.get<double>();
         }
@@ -871,7 +909,7 @@ public:
     static void DeSerialize(int16_t &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<double>())
+        if (!v.is<JsonNull>() && v.is<double>())
         {
             value = (int16_t)v.get<double>();
         }
@@ -880,7 +918,7 @@ public:
     static void DeSerialize(int32_t &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<double>())
+        if (!v.is<JsonNull>() && v.is<double>())
         {
             value = (int32_t)v.get<double>();
         }
@@ -889,7 +927,7 @@ public:
     static void DeSerialize(int64_t &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<double>())
+        if (!v.is<JsonNull>() && v.is<double>())
         {
             value = (int64_t)v.get<int64_t>();
         }
@@ -898,7 +936,7 @@ public:
     static void DeSerialize(uint8_t &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<double>())
+        if (!v.is<JsonNull>() && v.is<double>())
         {
             value = (uint8_t)v.get<double>();
         }
@@ -907,7 +945,7 @@ public:
     static void DeSerialize(uint16_t &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<double>())
+        if (!v.is<JsonNull>() && v.is<double>())
         {
             value = (uint16_t)v.get<double>();
         }
@@ -916,7 +954,7 @@ public:
     static void DeSerialize(uint32_t &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<double>())
+        if (!v.is<JsonNull>() && v.is<double>())
         {
             value = (uint32_t)v.get<double>();
         }
@@ -925,7 +963,7 @@ public:
     static void DeSerialize(uint64_t &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<double>())
+        if (!v.is<JsonNull>() && v.is<double>())
         {
             value = (uint64_t)v.get<int64_t>();
         }
@@ -936,7 +974,7 @@ public:
     static void DeSerialize(std::shared_ptr<T> &value, const std::string &name, const Json &json) 
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && (v.is<picojson::object>() || v.is<std::string>()))
+        if (!v.is<JsonNull>() && (v.is<JsonObject>() || v.is<std::string>()))
         {
             value = JsonSerializer<T>::FromJsonPtr(v);
         }
@@ -947,7 +985,7 @@ public:
     static DeSerialize(T &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && (v.is<picojson::object>() || v.is<std::string>()))
+        if (!v.is<JsonNull>() && (v.is<JsonObject>() || v.is<std::string>()))
         {
             value = JsonSerializer<T>::FromJson(v);
         }
@@ -958,7 +996,7 @@ public:
     static DeSerialize(T &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<double>())
+        if (!v.is<JsonNull>() && v.is<double>())
         {
             value = static_cast<T>(v.get<double>());
         }
@@ -967,12 +1005,12 @@ public:
     static void DeSerialize(std::vector<std::string> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<std::string>())
+                if (!item.is<JsonNull>() && item.is<std::string>())
                 {
                     value.emplace_back(item.get<std::string>());
                 }
@@ -983,12 +1021,12 @@ public:
     static void DeSerialize(std::vector<float> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((float)item.get<double>());
                 }
@@ -999,12 +1037,12 @@ public:
     static void DeSerialize(std::vector<double> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back(item.get<double>());
                 }
@@ -1016,12 +1054,12 @@ public:
     static void DeSerialize(std::vector<int8_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((int8_t)item.get<double>());
                 }
@@ -1032,12 +1070,12 @@ public:
     static void DeSerialize(std::vector<int16_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((int16_t)item.get<double>());
                 }
@@ -1048,12 +1086,12 @@ public:
     static void DeSerialize(std::vector<int32_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((int32_t)item.get<double>());
                 }
@@ -1064,12 +1102,12 @@ public:
     static void DeSerialize(std::vector<int64_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back(item.get<int64_t>());
                 }
@@ -1080,12 +1118,12 @@ public:
     static void DeSerialize(std::vector<uint8_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((uint8_t)item.get<double>());
                 }
@@ -1096,12 +1134,12 @@ public:
     static void DeSerialize(std::vector<uint16_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((uint16_t)item.get<double>());
                 }
@@ -1112,12 +1150,12 @@ public:
     static void DeSerialize(std::vector<uint32_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((uint32_t)item.get<double>());
                 }
@@ -1128,12 +1166,12 @@ public:
     static void DeSerialize(std::vector<uint64_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((uint64_t)item.get<int64_t>());
                 }
@@ -1146,9 +1184,9 @@ public:
     static void DeSerialize(std::vector<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
                 value.emplace_back(JsonSerializer<T>::FromJsonPtr(item));
@@ -1160,9 +1198,9 @@ public:
     static void DeSerialize(std::vector<T> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
                 value.emplace_back(JsonSerializer<T>::FromJson(item));
@@ -1173,12 +1211,12 @@ public:
     static void DeSerialize(std::list<std::string> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<std::string>())
+                if (!item.is<JsonNull>() && item.is<std::string>())
                 {
                     value.emplace_back(item.get<std::string>());
                 }
@@ -1189,12 +1227,12 @@ public:
     static void DeSerialize(std::list<float> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((float)item.get<double>());
                 }
@@ -1205,12 +1243,12 @@ public:
     static void DeSerialize(std::list<double> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back(item.get<double>());
                 }
@@ -1221,12 +1259,12 @@ public:
     static void DeSerialize(std::list<int8_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((int8_t)item.get<double>());
                 }
@@ -1237,12 +1275,12 @@ public:
     static void DeSerialize(std::list<int16_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((int16_t)item.get<double>());
                 }
@@ -1253,12 +1291,12 @@ public:
     static void DeSerialize(std::list<int32_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((int32_t)item.get<double>());
                 }
@@ -1269,12 +1307,12 @@ public:
     static void DeSerialize(std::list<int64_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back(item.get<int64_t>());
                 }
@@ -1285,12 +1323,12 @@ public:
     static void DeSerialize(std::list<uint8_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((uint8_t)item.get<double>());
                 }
@@ -1301,12 +1339,12 @@ public:
     static void DeSerialize(std::list<uint16_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((uint16_t)item.get<double>());
                 }
@@ -1317,12 +1355,12 @@ public:
     static void DeSerialize(std::list<uint32_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((uint32_t)item.get<double>());
                 }
@@ -1333,12 +1371,12 @@ public:
     static void DeSerialize(std::list<uint64_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace_back((uint64_t)item.get<int64_t>());
                 }
@@ -1351,9 +1389,9 @@ public:
     static void DeSerialize(std::list<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
                 value.emplace(JsonSerializer<T>::FromJsonPtr(item));
@@ -1365,9 +1403,9 @@ public:
     static void DeSerialize(std::list<T> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
                 value.emplace(JsonSerializer<T>::FromJson(item));
@@ -1378,12 +1416,12 @@ public:
     static void DeSerialize(std::set<std::string> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<std::string>())
+                if (!item.is<JsonNull>() && item.is<std::string>())
                 {
                     value.emplace(item.get<std::string>());
                 }
@@ -1394,12 +1432,12 @@ public:
     static void DeSerialize(std::set<float> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace((float)item.get<double>());
                 }
@@ -1410,12 +1448,12 @@ public:
     static void DeSerialize(std::set<double> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace(item.get<double>());
                 }
@@ -1426,12 +1464,12 @@ public:
     static void DeSerialize(std::set<int8_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace((int8_t)item.get<double>());
                 }
@@ -1442,12 +1480,12 @@ public:
     static void DeSerialize(std::set<int16_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace((int16_t)item.get<double>());
                 }
@@ -1458,12 +1496,12 @@ public:
     static void DeSerialize(std::set<int32_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace((int32_t)item.get<double>());
                 }
@@ -1474,12 +1512,12 @@ public:
     static void DeSerialize(std::set<int64_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace(item.get<int64_t>());
                 }
@@ -1490,12 +1528,12 @@ public:
     static void DeSerialize(std::set<uint8_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace((uint8_t)item.get<double>());
                 }
@@ -1506,12 +1544,12 @@ public:
     static void DeSerialize(std::set<uint16_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace((uint16_t)item.get<double>());
                 }
@@ -1522,12 +1560,12 @@ public:
     static void DeSerialize(std::set<uint32_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace((uint32_t)item.get<double>());
                 }
@@ -1538,12 +1576,12 @@ public:
     static void DeSerialize(std::set<uint64_t> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
-                if (!item.is<picojson::null>() && item.is<double>())
+                if (!item.is<JsonNull>() && item.is<double>())
                 {
                     value.emplace((uint64_t)item.get<int64_t>());
                 }
@@ -1556,9 +1594,9 @@ public:
     static void DeSerialize(std::set<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
                 value.emplace(JsonSerializer<T>::FromJsonPtr(item));
@@ -1570,9 +1608,9 @@ public:
     static void DeSerialize(std::set<T> &value, const std::string &name, const Json &json)
     {
         const Json &v = json.get(name);
-        if (!v.is<picojson::null>() && v.is<picojson::array>())
+        if (!v.is<JsonNull>() && v.is<JsonArray>())
         {
-            const auto &array = v.get<picojson::array>();
+            const auto &array = v.get<JsonArray>();
             for (const auto &item : array)
             {
                 value.emplace(JsonSerializer<T>::FromJson(item));
