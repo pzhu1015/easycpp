@@ -55,7 +55,7 @@ public:
         for (const auto &v: value)
         {
             auto sub = dict->AddSectionDictionary(name);
-            tpl::TplSerializer<T>::ToDictionary(value, sub);
+            tpl::TplSerializer<T>::ToDictionary(v, sub);
         }
     }
 
