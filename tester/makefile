@@ -7,6 +7,7 @@ INCLUDES = -I$(CURDIR)/..
 INCLUDES += -I$(CURDIR)/../../cpp-httplib
 INCLUDES += -I$(CURDIR)/../../picojson
 INCLUDES += -I$(CURDIR)/../../ctemplate/src
+INCLUDES += -I$(CURDIR)/../../json/single_include
 
 CC = g++
 #debug -g添加调试信息
