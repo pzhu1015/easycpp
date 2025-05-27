@@ -4,7 +4,6 @@
 #include <list>
 #include <set>
 #include <memory>
-#include <iostream>
 #include <picojson.h>
 #include "reflection.h"
 #define JSON_PRETY true
@@ -20,48 +19,6 @@
 
 #define JSON_SERIALIZE_ITEM_PTR(x) JSON_SERIALIZE_PTR(EXTRACT_MEMBER(x), EXTRACT_NICK(x))
 #define JSON_DESERIALIZE_ITEM_PTR(x) JSON_DESERIALIZE_PTR(EXTRACT_MEMBER(x), EXTRACT_NICK(x))
-
-#define REGIST_CLASS_JSON(T) \
-namespace serialize \
-{\
-    template<>\
-	class JsonSerializer<T>\
-	{\
-	public:\
-		static std::string ToString(const std::shared_ptr<T> &entity) \
-		{\
-            return entity->ToString();\
-        }\
-		static std::string ToString(const T &entity) \
-		{\
-            return entity.ToString();\
-		}\
-        static ::serialize::Json ToJson(const std::shared_ptr<T> &entity) \
-		{\
-            return ::serialize::Json(entity->ToString());\
-		}\
-        static ::serialize::Json ToJson(const T &entity) \
-		{\
-            return ::serialize::Json(entity.ToString());\
-		}\
-		static std::shared_ptr<T> FromStringPtr(const std::string &str) \
-		{\
-		    return std::make_shared<T>(str);\
-		}\
-		static T FromString(const std::string &str) \
-		{\
-		    return T(str);\
-		}\
-		static std::shared_ptr<T> FromJsonPtr(const ::serialize::Json &json) \
-		{\
-		    return std::make_shared<T>(json.get<std::string>());\
-		}\
-		static T FromJson(const ::serialize::Json &json) \
-		{\
-		    return T(json.get<std::string>());\
-		}\
-	};\
-}
 
 #define REGIST_MEMBER_JSON(T, ...) \
 namespace serialize \

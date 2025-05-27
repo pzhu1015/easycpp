@@ -1,8 +1,8 @@
 #include <iostream>
 #include <chrono>
 #include <ctemplate/template.h>
-#include "json_serialize.h"
-//#include "nlohmann_json_serialize.h"
+//#include "json_serialize.h"
+#include "nlohmann_json_serialize.h"
 #include "param_serialize.h"
 #include "tpl_serialize.h"
 
