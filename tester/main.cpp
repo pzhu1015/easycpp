@@ -1,10 +1,9 @@
 #include <iostream>
 #include <chrono>
-#include <ctemplate/template.h>
+#include <inja/inja.hpp>
 //#include "json_serialize.h"
 #include "nlohmann_json_serialize.h"
 #include "param_serialize.h"
-#include "tpl_serialize.h"
 
 namespace test
 {
@@ -76,7 +75,6 @@ class Account
 {
 public:
     int64_t ID;
-    bool Register;
     std::string Domain;
     std::string Password;
 };
@@ -101,44 +99,40 @@ public:
 
 static const std::string XmlDirectory = 
 R"(
-{{#Account}}
 <document type="freeswitch/xml">
     <section name="directory">
-        <domain name="{{Domain}}">
+        <domain name="{{Account.Domain}}">
             <params>
                 <param name="dial-string" value="{presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(${dialed_user}@${dialed_domain})}"/>
             </params>
-            <user id="{{ID}}" cacheable="60000">
+            <user id="{{Account.ID}}" cacheable="60000">
                 <params>
-                    <param name="password" value="{{Password}}"/>
+                    <param name="password" value="{{Account.Password}}"/>
                 </params>
                 <variables>
                     <variable name="toll_allow" value="domestic,international,local"/>
                     <variable name="user_context" value="default"/>
                     <variable name="callgroup" value="default"/>
-                    <variable name="effective_caller_id_name" value="{{ID}}"/>
-                    <variable name="effective_caller_id_number" value="{{ID}}"/>
-                    <variable name="outbound_caller_id_name" value="{{ID}}"/>
-                    <variable name="outbound_caller_id_number" value="{{ID}}"/>
-                    <variable name="register" value="{{Register}}"/>
+                    <variable name="effective_caller_id_name" value="{{Account.ID}}"/>
+                    <variable name="effective_caller_id_number" value="{{Account.ID}}"/>
+                    <variable name="outbound_caller_id_name" value="{{Account.ID}}"/>
+                    <variable name="outbound_caller_id_number" value="{{Account.ID}}"/>
                 </variables>
             </user>
         </domain>
     </section>
 </document>
-{{/Account}}
 )";
 }
 
-REGIST_MEMBER_TPL(
+REGIST_MEMBER_JSON(
     test::Account,
     PLAIN(ID),
-    PLAIN(Register),
     PLAIN(Domain),
     PLAIN(Password)
 );
 
-REGIST_MEMBER_TPL(
+REGIST_MEMBER_JSON(
     test::DirectoryInDTO,
     PLAIN(EventCallingFunction),
     PLAIN(UserAgent),
@@ -147,9 +141,8 @@ REGIST_MEMBER_TPL(
     PLAIN(Domain)
 );
 
-REGIST_MEMBER_TPL(
+REGIST_MEMBER_JSON(
     test::DirectoryOutDTO,
-    PLAIN(InDTO),
     PLAIN(Account)
 );
 
@@ -356,37 +349,41 @@ void TestParamSerialize()
 
 void TestTemplateSerialize()
 {
-    std::string out;
-    auto start = std::chrono::high_resolution_clock::now();
-    for (int i=0; i < 100000; i++)
+    try
     {
-        auto outdto = std::make_shared<test::DirectoryOutDTO>();
-        outdto->InDTO = std::make_shared<test::DirectoryInDTO>();
-        outdto->Account = std::make_shared<test::Account>();
-        outdto->Account->ID = 8001;
-        outdto->Account->Register = true;
-        outdto->Account->Domain = "sbc.shyzhy.com";
-        outdto->Account->Password = "123456";
-        ctemplate::Template::StringToTemplateCache("directory.tpl", test::XmlDirectory);
-        auto dict = std::make_shared<ctemplate::TemplateDictionary>("");
-        tpl::TplSerializer<test::DirectoryOutDTO>::ToDictionary(outdto, dict.get());
-        auto tpl = ctemplate::Template::GetTemplate("directory.tpl", ctemplate::DO_NOT_STRIP);
-        out = "";
-        tpl->Expand(&out, dict.get());
+        inja::Environment env;
+        auto tpl = env.parse(test::XmlDirectory);
+        std::string out;
+        auto start = std::chrono::high_resolution_clock::now();
+        for (int i=0; i < 100000; i++)
+        {
+            auto outdto = std::make_shared<test::DirectoryOutDTO>();
+            outdto->Account = std::make_shared<test::Account>();
+            outdto->Account->ID = 8001;
+            outdto->Account->Domain = "sbc.shyzhy.com";
+            outdto->Account->Password = "123456";
+            auto json = serialize::JsonSerializer<test::DirectoryOutDTO>::ToJson(outdto);
+            out = env.render(tpl, json);
+        }
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration = end - start;
+        std::cout << out << std::endl;
+        std::cout << "Time elapsed: " << std::fixed << std::setprecision(6) 
+            << duration.count() << " seconds" << std::endl;
+
     }
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start;
-    std::cout << out << std::endl;
-    std::cout << "Time elapsed: " << std::fixed << std::setprecision(6) 
-        << duration.count() << " seconds" << std::endl;
+    catch(std::exception &ex)
+    {
+        std::cout << ex.what() << std::endl;
+    }
 }
 
 int main()
 {
-    TestJsonSerialize();
+    //TestJsonSerialize();
     //TestParamSerialize();
     //std::cout << test::XmlDirectory << std::endl;
-    //TestTemplateSerialize();
+    TestTemplateSerialize();
     return 0;
 }
 
