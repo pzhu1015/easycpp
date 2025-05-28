@@ -2,6 +2,16 @@
 #include <memory>
 #include <type_traits>
 
+#ifdef ENABLE_EASYCPP_LOG
+    #define EASYCPP_LOG \
+        do { \
+            std::cout << __FILE__ << ":" << __LINE__ << "(" << __func__ << ")" << std::endl;\
+        } while (0)
+#else
+    #define EASYCPP_LOG
+#endif
+
+
 //判断参数是否空
 #define EMPTY(...)
 #define NOT_EMPTY(x, ...) x

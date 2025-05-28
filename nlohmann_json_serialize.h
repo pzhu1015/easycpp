@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include <string>
 #include <memory>
 #include <vector>
@@ -121,6 +122,179 @@ public:
     static T FromJson(const Json &json) 
     {
         return T();
+    }
+};
+
+template<>
+class JsonSerializer<std::set<std::string>>
+{
+public:
+    static std::string ToString(const std::set<std::string> &entity)
+    {
+        EASYCPP_LOG;
+        Json json = entity;
+        return json.dump(4);
+    }
+
+    static Json ToJson(const std::set<std::string> &entity) 
+    {
+        EASYCPP_LOG;
+        return entity;
+    }
+
+    static std::set<std::string> FromString(const std::string &str)
+    {
+        EASYCPP_LOG;
+        auto json = Json::parse(str);
+        if (!json.is_null() && json.is_array())
+        {
+            return json.get<std::set<std::string>>();
+        }
+        return {};
+    }
+
+    static std::set<std::string> FromJson(const Json &json)
+    {
+        EASYCPP_LOG;
+        if (!json.is_null() && json.is_array())
+        {
+            return json.get<std::set<std::string>>();
+        }
+        return {};
+    }
+};
+
+template<>
+class JsonSerializer<std::vector<std::string>>
+{
+public:
+    static std::string ToString(const std::vector<std::string> &entity)
+    {
+        EASYCPP_LOG;
+        Json json = entity;
+        return json.dump(4);
+    }
+
+    static Json ToJson(const std::vector<std::string> &entity) 
+    {
+        EASYCPP_LOG;
+        return entity;
+    }
+
+    static std::vector<std::string> FromString(const std::string &str)
+    {
+        auto json = Json::parse(str);
+        if (!json.is_null() && json.is_array())
+        {
+            return json.get<std::vector<std::string>>();
+        }
+        return {};
+    }
+
+    static std::vector<std::string> FromJson(const Json &json)
+    {
+        EASYCPP_LOG;
+        if (!json.is_null() && json.is_array())
+        {
+            return json.get<std::vector<std::string>>();
+        }
+        return {};
+    }
+};
+
+template<class T>
+class JsonSerializer<std::vector<std::shared_ptr<T>>>
+{
+public:
+    static std::string ToString(const std::vector<std::shared_ptr<T>> &entity)
+    {
+        EASYCPP_LOG;
+        auto array = Json::array();
+        for (const auto &v : entity)
+        {
+            array.emplace_back(JsonSerializer<T>::ToJson(v));
+        }
+        return array.dump(4);
+    }
+
+    static Json ToJson(const std::vector<std::shared_ptr<T>> &entity) 
+    {
+        EASYCPP_LOG;
+        auto array = Json::array();
+        for (const auto &v : entity)
+        {
+            array.emplace_back(JsonSerializer<T>::ToJson(v));
+        }
+        return array;
+    }
+
+    static std::vector<std::shared_ptr<T>> FromString(const std::string &str)
+    {
+        EASYCPP_LOG;
+        std::vector<std::shared_ptr<T>> value;
+        auto json = Json::parse(str);
+        if (!json.is_null() && json.is_array())
+        {
+            for (const auto &item : json)
+            {
+                value.emplace_back(JsonSerializer<T>::FromJsonPtr(item));
+            }
+        }
+        return value;
+    }
+
+    static std::vector<std::shared_ptr<T>> FromJson(const Json &json)
+    {
+        EASYCPP_LOG;
+        std::vector<std::shared_ptr<T>> value;
+        if (!json.is_null() && json.is_array())
+        {
+            for (const auto &item : json)
+            {
+                value.emplace_back(JsonSerializer<T>::FromJsonPtr(item));
+            }
+            return value;
+        }
+        return value;
+    }
+};
+
+
+template<>
+class JsonSerializer<std::list<std::string>>
+{
+public:
+    static std::string ToString(const std::list<std::string> &entity)
+    {
+        EASYCPP_LOG;
+        Json json = entity;
+        return json.dump(4);
+    }
+
+    static Json ToJson(const std::list<std::string> &entity) 
+    {
+        EASYCPP_LOG;
+        return entity;
+    }
+
+    static std::list<std::string> FromString(const std::string &str)
+    {
+        auto json = Json::parse(str);
+        if (!json.is_null() && json.is_array())
+        {
+            return json.get<std::list<std::string>>();
+        }
+        return {};
+    }
+
+    static std::list<std::string> FromJson(const Json &json)
+    {
+        EASYCPP_LOG;
+        if (!json.is_null() && json.is_array())
+        {
+            return json.get<std::list<std::string>>();
+        }
+        return {};
     }
 };
 

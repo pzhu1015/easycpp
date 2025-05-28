@@ -15,7 +15,7 @@ CC = g++
 #CCFLAGS = -Wall -lpthread -fPIC -m64 -g -std=c++20 -lstdc++ -pipe
 #-Wsign-compare -Wfloat-equal -Wpointer-arith -Wcast-align
 DYNAMIC_LIBS = -lpthread -lstdc++ -pipe -lssl -lcrypto -ldl -lz
-MACROS = -DPICOJSON_USE_INT64
+MACROS = -DPICOJSON_USE_INT64 -DENABLE_EASYCPP_LOG
 CHECKS = -Wpointer-arith -Wcast-align
 CCFLAGS = -g -O2 $(CHECKS) $(MACROS) -fPIC -m64 -std=c++17 -L/usr/local/lib
 
