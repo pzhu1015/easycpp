@@ -4,6 +4,7 @@
 //#include "json_serialize.h"
 #include "nlohmann_json_serialize.h"
 #include "param_serialize.h"
+#include "license.h"
 
 namespace test
 {
@@ -518,10 +519,11 @@ void TestTemplateSerialize()
 
 int main()
 {
+    lic::Acquire("DEFAULT");
     //TestJsonSerialize();
     //TestParamSerialize();
     //std::cout << test::XmlDirectory << std::endl;
-    TestTemplateSerialize();
+    //TestTemplateSerialize();
     return 0;
 }
 
