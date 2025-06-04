@@ -519,7 +519,7 @@ void TestTemplateSerialize()
 
 int main()
 {
-    lic::Acquire("DEFAULT");
+    lic::Acquire();
     //TestJsonSerialize();
     //TestParamSerialize();
     //std::cout << test::XmlDirectory << std::endl;

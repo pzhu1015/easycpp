@@ -3,6 +3,8 @@
 #include <string>
 #include <unordered_map>
 #include <licensecc/licensecc.h>
+#include <licensecc/DEFAULT/licensecc_properties.h>
+#include <licensecc/DEFAULT/public_key.h>
 
 namespace lic
 {
@@ -19,12 +21,12 @@ static const std::unordered_map<LCC_EVENT_TYPE, std::string> Events = {
     {IDENTIFIERS_MISMATCH,             "已计算标识符与许可证中提供的标识符不匹配"},
 };
 
-static void Acquire(const std::string &project_name)
+static void Acquire()
 {
     try
     {
         LicenseInfo info;
-        LicenseLocation location = {LICENSE_PATH, "tester.lic"};
+        LicenseLocation location = {LICENSE_PATH, "license.lic"};
         auto result = acquire_license(nullptr, &location, &info);
         if (result == LICENSE_OK)
         {
