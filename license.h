@@ -37,6 +37,9 @@ static void Acquire(const std::string &license_file, const std::string &module)
         if (result == LICENSE_OK)
         {
             std::cout << "许可证正常!!!" << std::endl;
+            std::cout << "是否过期: " << info.has_expiry << std::endl;
+            std::cout << "到期时间: " << info.expiry_date << std::endl;
+            std::cout << "还剩时间: " << info.days_left << std::endl;
             if (!info.linked_to_pc)
             { 
                 std::cerr << "许可证中没有硬件签名。这是一个“演示”许可证，适用于所有电脑。" << std::endl;
@@ -50,9 +53,7 @@ static void Acquire(const std::string &license_file, const std::string &module)
                     std::cerr << "证书模块不匹配: " << module << std::endl;
                     exit(0);
                 }
-                std::cout << "是否过期: " << info.has_expiry << std::endl;
-                std::cout << "到期时间: " << info.expiry_date << std::endl;
-                std::cout << "还剩时间: " << info.days_left << std::endl;
+
                 if (!info.has_expiry)
                 {
                     std::cerr << "许可证过期" << std::endl;
