@@ -1,6 +1,5 @@
 SERVICE = main.cpp
 
-TARGET = ../../licensecc/install/lib/licensecc/DEFAULT/liblicensecc_static.a
 
 SERVICE_BIN = tester.exe
 INCLUDES = -I$(CURDIR)
@@ -9,8 +8,6 @@ INCLUDES += -I$(CURDIR)/../../cpp-httplib
 INCLUDES += -I$(CURDIR)/../../picojson
 INCLUDES += -I$(CURDIR)/../../json/single_include
 INCLUDES += -I$(CURDIR)/../../inja/single_include
-INCLUDES += -I$(CURDIR)/../../licensecc/install/include
-INCLUDES += -I$(CURDIR)/../../licensecc/install/include/licensecc/DEFAULT
 
 CC = g++
 #debug -g添加调试信息
