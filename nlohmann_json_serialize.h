@@ -20,6 +20,48 @@
 #define JSON_SERIALIZE_ITEM_PTR(x) JSON_SERIALIZE_PTR(EXTRACT_MEMBER(x), EXTRACT_NICK(x))
 #define JSON_DESERIALIZE_ITEM_PTR(x) JSON_DESERIALIZE_PTR(EXTRACT_MEMBER(x), EXTRACT_NICK(x))
 
+#define REGIST_CLASS_JSON(T) \
+namespace serialize \
+{\
+    template<>\
+	class JsonSerializer<T>\
+	{\
+	public:\
+		static std::string ToString(const std::shared_ptr<T> &entity) \
+		{\
+            return entity->ToString();\
+        }\
+		static std::string ToString(const T &entity) \
+		{\
+            return entity.ToString();\
+		}\
+        static ::serialize::Json ToJson(const std::shared_ptr<T> &entity) \
+		{\
+            return ::serialize::Json(entity->ToString());\
+		}\
+        static ::serialize::Json ToJson(const T &entity) \
+		{\
+            return ::serialize::Json(entity.ToString());\
+		}\
+		static std::shared_ptr<T> FromStringPtr(const std::string &str) \
+		{\
+		    return std::make_shared<T>(str);\
+		}\
+		static T FromString(const std::string &str) \
+		{\
+		    return T(str);\
+		}\
+		static std::shared_ptr<T> FromJsonPtr(const ::serialize::Json &json) \
+		{\
+		    return std::make_shared<T>(json.get<std::string>());\
+		}\
+		static T FromJson(const ::serialize::Json &json) \
+		{\
+		    return T(json.get<std::string>());\
+		}\
+	};\
+}
+
 #define REGIST_MEMBER_JSON(T, ...) \
 namespace serialize \
 {\
@@ -397,7 +439,8 @@ public:
     }
 
     template<typename T>
-    static void Serialize(const std::shared_ptr<T> &value, const std::string &name, Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static Serialize(const std::shared_ptr<T> &value, const std::string &name, Json &json)
     {
         if (value != nullptr && !json.is_null() && json.is_object())
         {
@@ -405,9 +448,9 @@ public:
         }
     }
 
-    //非枚举类型
+    //自定义类型
     template<typename T>
-    typename std::enable_if<!std::is_enum<T>::value, void>::type
+    typename std::enable_if<std::is_class<T>::value, void>::type
     static Serialize(const T &value, const std::string &name, Json &json)
     {
         if (!json.is_null() && json.is_object())
@@ -516,7 +559,8 @@ public:
     }
 
     template<typename T>
-    static void Serialize(const std::vector<std::shared_ptr<T>> &value, const std::string &name, Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static Serialize(const std::vector<std::shared_ptr<T>> &value, const std::string &name, Json &json)
     {
         if (!json.is_null() && json.is_object())
         {
@@ -530,7 +574,8 @@ public:
     }
 
     template<typename T>
-    static void Serialize(const std::vector<T> &value, const std::string &name, Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static Serialize(const std::vector<T> &value, const std::string &name, Json &json)
     {
         if (!json.is_null() && json.is_object())
         {
@@ -633,7 +678,8 @@ public:
 
 
     template<typename T>
-    static void Serialize(const std::list<std::shared_ptr<T>> &value, const std::string &name, Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static Serialize(const std::list<std::shared_ptr<T>> &value, const std::string &name, Json &json)
     {
         if (!json.is_null() && json.is_object())
         {
@@ -647,7 +693,8 @@ public:
     }
 
     template<typename T>
-    static void Serialize(const std::list<T> &value, const std::string &name, Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static Serialize(const std::list<T> &value, const std::string &name, Json &json)
     {
         if (!json.is_null() && json.is_object())
         {
@@ -749,7 +796,8 @@ public:
     }
 
     template<typename T>
-    static void Serialize(const std::set<std::shared_ptr<T>> &value, const std::string &name, Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static Serialize(const std::set<std::shared_ptr<T>> &value, const std::string &name, Json &json)
     {
         if (!json.is_null() && json.is_object())
         {
@@ -763,7 +811,8 @@ public:
     }
 
     template<typename T>
-    static void Serialize(const std::set<T> &value, const std::string &name, Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static Serialize(const std::set<T> &value, const std::string &name, Json &json)
     {
         if (!json.is_null() && json.is_object())
         {
@@ -886,7 +935,8 @@ public:
 
     //对象指针类型
     template<typename T>
-    static void DeSerialize(std::shared_ptr<T> &value, const std::string &name, const Json &json) 
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static DeSerialize(std::shared_ptr<T> &value, const std::string &name, const Json &json) 
     {
         const Json &v = json[name];
         if (!v.is_null() && v.is_object())
@@ -897,11 +947,11 @@ public:
 
     //对象类型
     template<typename T>
-    typename std::enable_if<!std::is_enum<T>::value, void>::type
+    typename std::enable_if<std::is_class<T>::value, void>::type
     static DeSerialize(T &value, const std::string &name, const Json &json)
     {
         const Json &v = json[name];
-        if (!v.is_null() && v.is_object())
+        if (!v.is_null() && (v.is_object() || v.is_string()))
         {
             value = JsonSerializer<T>::FromJson(v);
         }
@@ -1019,7 +1069,8 @@ public:
     }
 
     template<typename T>
-    static void DeSerialize(std::vector<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static DeSerialize(std::vector<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
     {
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
@@ -1032,7 +1083,8 @@ public:
     }
 
     template<typename T>
-    static void DeSerialize(std::vector<T> &value, const std::string &name, const Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static DeSerialize(std::vector<T> &value, const std::string &name, const Json &json)
     {
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
@@ -1144,7 +1196,8 @@ public:
     }
 
     template<typename T>
-    static void DeSerialize(std::list<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static DeSerialize(std::list<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
     {
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
@@ -1157,7 +1210,8 @@ public:
     }
 
     template<typename T>
-    static void DeSerialize(std::list<T> &value, const std::string &name, const Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static DeSerialize(std::list<T> &value, const std::string &name, const Json &json)
     {
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
@@ -1269,7 +1323,8 @@ public:
     }
 
     template<typename T>
-    static void DeSerialize(std::set<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static DeSerialize(std::set<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
     {
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
@@ -1282,7 +1337,8 @@ public:
     }
 
     template<typename T>
-    static void DeSerialize(std::set<T> &value, const std::string &name, const Json &json)
+    typename std::enable_if<std::is_class<T>::value, void>::type
+    static DeSerialize(std::set<T> &value, const std::string &name, const Json &json)
     {
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())

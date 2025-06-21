@@ -4,6 +4,9 @@
 //#include "json_serialize.h"
 #include "nlohmann_json_serialize.h"
 #include "param_serialize.h"
+#include "datetime.h"
+
+REGIST_CLASS_JSON(::datetime::DateTime)
 
 namespace test
 {
@@ -33,6 +36,7 @@ public:
     uint16_t UInt16;
     uint32_t UInt32;
     uint64_t UInt64;
+    datetime::DateTime DateTime;
 
     std::vector<std::string> VectorString;
     std::vector<float> VectorFloat;
@@ -273,6 +277,7 @@ REGIST_MEMBER_JSON(
     NAME(SubPtr,"sub_ptr"),
     NAME(VectorSub,"vector_sub"),
     NAME(VectorSubPtr,"vector_sub_ptr"),
+    NAME(DateTime,"datetime"),
     NAME(String,"string"),
     NAME(Float,"float"),
     NAME(Bool,"bool"),
@@ -339,6 +344,7 @@ REGIST_MEMBER_PARAM(
 void TestJsonSerialize()
 {
     test::Object t;
+    t.DateTime = datetime::DateTime::Now();
     t.Sub;
     t.Sub.String = "sub.string";
     t.Sub.Int32 = 200000000;
@@ -414,6 +420,9 @@ void TestJsonSerialize()
 
     auto t1 = serialize::JsonSerializer<test::Object>::FromString(json);
     std::cout << "t1.String = " << t1.String << std::endl;
+    std::cout << "t1.DateTime = " << t1.DateTime.ToString() << std::endl;
+    t1.DateTime = t1.DateTime.Add(std::chrono::minutes(10));
+    std::cout << "t1.DateTime + 10(minute) = " << t1.DateTime.ToString() << std::endl;
     std::cout << "======================================================" << std::endl;
 
     auto t2 = serialize::JsonSerializer<test::Object>::FromStringPtr(json);
@@ -516,9 +525,25 @@ void TestTemplateSerialize()
     }
 }
 
+void TestDateTime()
+{
+    datetime::DateTime dt;
+    std::cout << dt.IsZero() << std::endl;
+
+    auto dt2 = datetime::DateTime::Parse("2025-06-21 00:00:00");
+    std::cout << dt2.ToString() << std::endl;
+
+    auto now = datetime::DateTime::Now();
+    std::cout << now.ToString() << std::endl;
+
+    auto add = now.Add(std::chrono::minutes(10));
+    std::cout << add.ToString() << std::endl;
+}
+
 int main()
 {
-    //TestJsonSerialize();
+    TestDateTime();
+    TestJsonSerialize();
     //TestParamSerialize();
     //std::cout << test::XmlDirectory << std::endl;
     //TestTemplateSerialize();
