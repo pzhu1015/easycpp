@@ -7,6 +7,10 @@
 #include <stdexcept>
 #include <string>
 #include <cstring> // memcpy
+#define HAVE_MYSQL
+#ifdef HAVE_MYSQL  // 仅在使用 MySQL 时启用
+#include <mysql/mysql.h>
+#endif
 
 namespace datetime
 {
@@ -18,6 +22,28 @@ public:
 
     // 默认构造函数（零值时间）
     DateTime() : is_zero_(true) {}
+
+#ifdef HAVE_MYSQL  // 仅在使用 MySQL 时启用
+    explicit DateTime(const st_mysql_time& t)
+    {
+        if (t.year == 0 && t.month == 0 && t.day == 0)
+        {
+            is_zero_ = true;
+        }
+        else
+        {
+            std::tm tm = {};
+            tm.tm_year = t.year - 1900;
+            tm.tm_mon = t.month - 1;
+            tm.tm_mday = t.day;
+            tm.tm_hour = t.hour;
+            tm.tm_min = t.minute;
+            tm.tm_sec = t.second;
+            tp_ = Clock::from_time_t(std::mktime(&tm));
+            is_zero_ = false;
+        }
+    }
+#endif
 
     // 从time_point构造
     explicit DateTime(const TimePoint& tp) : tp_(tp), is_zero_(false) {}
@@ -73,6 +99,26 @@ public:
         if (is_zero_ != other.is_zero_) return false;
         return is_zero_ || tp_ == other.tp_;
     }
+
+#ifdef HAVE_MYSQL  // 仅在使用 MySQL 时启用
+    // 转换为 st_mysql_time
+    operator st_mysql_time() const
+    {
+        st_mysql_time t = {};
+        if (!is_zero_)
+        {
+            std::time_t tt = Clock::to_time_t(tp_);
+            std::tm tm = *std::localtime(&tt);
+            t.year = tm.tm_year + 1900;
+            t.month = tm.tm_mon + 1;
+            t.day = tm.tm_mday;
+            t.hour = tm.tm_hour;
+            t.minute = tm.tm_min;
+            t.second = tm.tm_sec;
+        }
+        return t;
+    }
+#endif
     
     // 时间运算方法（零值保持不变）
     DateTime AddYears(int years) const 
@@ -82,7 +128,7 @@ public:
         std::tm tm;
         localtime_r(&t, &tm);
         tm.tm_year += years;
-        return DateTime(Clock::from_time_t(mktime(&tm)));
+        return DateTime(Clock::from_time_t(std::mktime(&tm)));
     }
     
     DateTime AddMonths(int months) const 
@@ -99,7 +145,7 @@ public:
         {
             tm.tm_mday = DaysInMonth(tm.tm_year + 1900, tm.tm_mon + 1);
         }
-        return DateTime(Clock::from_time_t(mktime(&tm)));
+        return DateTime(Clock::from_time_t(std::mktime(&tm)));
     }
     
     DateTime AddDays(int days) const 
@@ -173,7 +219,7 @@ public:
         {
             return DateTime();
         }
-        return DateTime(Clock::from_time_t(mktime(&tm)));
+        return DateTime(Clock::from_time_t(std::mktime(&tm)));
     }
 
 private:

@@ -426,6 +426,7 @@ void TestJsonSerialize()
     std::cout << "======================================================" << std::endl;
 
     auto t2 = serialize::JsonSerializer<test::Object>::FromStringPtr(json);
+    t2->DateTime = t2->DateTime.Add(std::chrono::minutes(10));
     t2->String = "modify.string";
     auto json2 = serialize::JsonSerializer<test::Object>::ToString(t2);
     std::cout << "json2 = " << json2 << std::endl;
