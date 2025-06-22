@@ -9,11 +9,11 @@ namespace odb
 namespace mysql
 {
     template <>
-    struct value_traits<::datetime::DateTime, ::odb::mysql::id_datetime> {
+    struct value_traits<::datetime::DateTime, id_datetime> {
     public:
-        typedef ::datetime::DateTime value_type;
-        typedef value_type query_type;
-        typedef MYSQL_TIME image_type;
+        using value_type = ::datetime::DateTime;
+        using query_type = value_type;
+        using image_type = MYSQL_TIME;
 
         static void set_value(value_type& v, const image_type &i, size_t n, bool is_null) 
         {
@@ -31,7 +31,7 @@ namespace mysql
             tm.tm_min = i.minute;
             tm.tm_sec = i.second;
             std::time_t t = std::mktime(&tm);
-            v = datetime::DateTime(t);
+            v = value_type(t);
         }
         
         static void set_image(image_type &i, bool& is_null, const value_type& v) 
