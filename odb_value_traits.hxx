@@ -1,15 +1,15 @@
 #pragma once
 
-#include <odb/pre.hxx>
 #include <datetime.h>
 #include <odb/mysql/traits.hxx>
+#include <iostream>
 
 namespace odb 
 {
 namespace mysql
 {
     template <>
-    class value_traits<::datetime::DateTime, id_datetime> {
+    struct value_traits<::datetime::DateTime, ::odb::mysql::id_datetime> {
     public:
         typedef ::datetime::DateTime value_type;
         typedef value_type query_type;
@@ -17,6 +17,7 @@ namespace mysql
 
         static void set_value(value_type& v, const image_type &i, size_t n, bool is_null) 
         {
+            std::cout << __FILE__ << "is_null: " << is_null << std::endl;
             if (is_null)
             {
                 v = value_type();
@@ -35,6 +36,7 @@ namespace mysql
         
         static void set_image(image_type &i, bool& is_null, const value_type& v) 
         {
+            std::cout << __FILE__ << "is_null: " << is_null << std::endl;
             if (v.IsZero())
             {
                 is_null = true;
@@ -57,4 +59,3 @@ namespace mysql
     };
 }
 }
-#include <odb/post.hxx>

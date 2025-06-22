@@ -7,7 +7,6 @@
 #include <stdexcept>
 #include <string>
 #include <cstring> // memcpy
-#define HAVE_MYSQL
 #ifdef HAVE_MYSQL  // 仅在使用 MySQL 时启用
 #include <mysql/mysql.h>
 #endif
