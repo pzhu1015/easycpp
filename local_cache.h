@@ -104,6 +104,12 @@ public:
         }
     }
 
+    void Clear()
+    {
+        std::unique_lock<std::shared_mutex> write_lock(_mutex);
+        this->_cache.clear();
+    }
+
 private:
     std::shared_mutex   _mutex;
     Caches<K,V>         _cache;
