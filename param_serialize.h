@@ -5,6 +5,15 @@
 #include <httplib.h>
 #include "reflection.h"
 
+#ifdef EASYCPP_LOGGING
+#include <logger.h>
+#else
+#define DEBUG(...)  ((void)0)
+#define INFO(...) ((void)0)
+#define WARNING(...) ((void)0)
+#define ERROR(...) ((void)0)
+#endif
+
 #define PARAM_SERIALIZE_PTR(name, nick) ::serialize::ParamSerialize::Serialize(entity->name, nick, param);
 #define PARAM_DESERIALIZE_PTR(name, nick) ::serialize::ParamSerialize::DeSerialize(entity->name, nick, param); 
 

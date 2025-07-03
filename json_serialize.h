@@ -8,6 +8,15 @@
 #include <nlohmann/json.hpp>
 #include "reflection.h"
 
+#ifdef EASYCPP_LOGGING
+#include <logger.h>
+#else
+#define DEBUG(...)  ((void)0)
+#define INFO(...) ((void)0)
+#define WARNING(...) ((void)0)
+#define ERROR(...) ((void)0)
+#endif
+
 #define JSON_SERIALIZE_PTR(name, nick) ::serialize::JsonSerialize::Serialize(entity->name, nick, json);
 #define JSON_DESERIALIZE_PTR(name, nick) ::serialize::JsonSerialize::DeSerialize(entity->name, nick, json); 
 
@@ -173,20 +182,17 @@ class JsonSerializer<std::set<std::string>>
 public:
     static std::string ToString(const std::set<std::string> &entity)
     {
-        EASYCPP_LOG;
         Json json = entity;
         return json.dump(4);
     }
 
     static Json ToJson(const std::set<std::string> &entity) 
     {
-        EASYCPP_LOG;
         return entity;
     }
 
     static std::set<std::string> FromString(const std::string &str)
     {
-        EASYCPP_LOG;
         auto json = Json::parse(str);
         if (!json.is_null() && json.is_array())
         {
@@ -197,7 +203,6 @@ public:
 
     static std::set<std::string> FromJson(const Json &json)
     {
-        EASYCPP_LOG;
         if (!json.is_null() && json.is_array())
         {
             return json.get<std::set<std::string>>();
@@ -212,14 +217,12 @@ class JsonSerializer<std::vector<std::string>>
 public:
     static std::string ToString(const std::vector<std::string> &entity)
     {
-        EASYCPP_LOG;
         Json json = entity;
         return json.dump(4);
     }
 
     static Json ToJson(const std::vector<std::string> &entity) 
     {
-        EASYCPP_LOG;
         return entity;
     }
 
@@ -235,7 +238,6 @@ public:
 
     static std::vector<std::string> FromJson(const Json &json)
     {
-        EASYCPP_LOG;
         if (!json.is_null() && json.is_array())
         {
             return json.get<std::vector<std::string>>();
@@ -250,7 +252,6 @@ class JsonSerializer<std::vector<std::shared_ptr<T>>>
 public:
     static std::string ToString(const std::vector<std::shared_ptr<T>> &entity)
     {
-        EASYCPP_LOG;
         auto array = Json::array();
         for (const auto &v : entity)
         {
@@ -261,7 +262,6 @@ public:
 
     static Json ToJson(const std::vector<std::shared_ptr<T>> &entity) 
     {
-        EASYCPP_LOG;
         auto array = Json::array();
         for (const auto &v : entity)
         {
@@ -272,7 +272,6 @@ public:
 
     static std::vector<std::shared_ptr<T>> FromString(const std::string &str)
     {
-        EASYCPP_LOG;
         std::vector<std::shared_ptr<T>> value;
         auto json = Json::parse(str);
         if (!json.is_null() && json.is_array())
@@ -287,7 +286,6 @@ public:
 
     static std::vector<std::shared_ptr<T>> FromJson(const Json &json)
     {
-        EASYCPP_LOG;
         std::vector<std::shared_ptr<T>> value;
         if (!json.is_null() && json.is_array())
         {
@@ -308,14 +306,12 @@ class JsonSerializer<std::list<std::string>>
 public:
     static std::string ToString(const std::list<std::string> &entity)
     {
-        EASYCPP_LOG;
         Json json = entity;
         return json.dump(4);
     }
 
     static Json ToJson(const std::list<std::string> &entity) 
     {
-        EASYCPP_LOG;
         return entity;
     }
 
@@ -331,7 +327,6 @@ public:
 
     static std::list<std::string> FromJson(const Json &json)
     {
-        EASYCPP_LOG;
         if (!json.is_null() && json.is_array())
         {
             return json.get<std::list<std::string>>();

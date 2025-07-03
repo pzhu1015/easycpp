@@ -1,344 +1,10 @@
 #include <iostream>
 #include <chrono>
 #include <inja/inja.hpp>
-#include "json_serialize.h"
-#include "param_serialize.h"
-#include "datetime.h"
-
-REGIST_CLASS_JSON(::datetime::DateTime)
-
-namespace test
-{
-class SubObject
-{
-public:
-    std::string String;
-    int32_t Int32;
-};
-
-class Object
-{
-public:
-    SubObject Sub;
-    std::shared_ptr<SubObject> SubPtr;
-    std::vector<SubObject> VectorSub;
-    std::vector<std::shared_ptr<SubObject>> VectorSubPtr;
-    std::string String;
-    float Float;
-    bool Bool;
-    double Double;
-    int8_t Int8;
-    int16_t Int16;
-    int32_t Int32;
-    int64_t Int64;
-    uint8_t UInt8;
-    uint16_t UInt16;
-    uint32_t UInt32;
-    uint64_t UInt64;
-    datetime::DateTime DateTime;
-
-    std::vector<std::string> VectorString;
-    std::vector<float> VectorFloat;
-    std::vector<double> VectorDouble;
-    std::vector<int8_t> VectorInt8;
-    std::vector<int16_t> VectorInt16;
-    std::vector<int32_t> VectorInt32;
-    std::vector<int64_t> VectorInt64;
-    std::vector<uint8_t> VectorUInt8;
-    std::vector<uint16_t> VectorUInt16;
-    std::vector<uint32_t> VectorUInt32;
-    std::vector<uint64_t> VectorUInt64;
-
-    std::list<std::string> ListString;
-    std::list<float> ListFloat;
-    std::list<double> ListDouble;
-    std::list<int8_t> ListInt8;
-    std::list<int16_t> ListInt16;
-    std::list<int32_t> ListInt32;
-    std::list<int64_t> ListInt64;
-    std::list<uint8_t> ListUInt8;
-    std::list<uint16_t> ListUInt16;
-    std::list<uint32_t> ListUInt32;
-    std::list<uint64_t> ListUInt64;
-
-    std::set<std::string> SetString;
-    std::set<float> SetFloat;
-    std::set<double> SetDouble;
-    std::set<int8_t> SetInt8;
-    std::set<int16_t> SetInt16;
-    std::set<int32_t> SetInt32;
-    std::set<int64_t> SetInt64;
-    std::set<uint8_t> SetUInt8;
-    std::set<uint16_t> SetUInt16;
-    std::set<uint32_t> SetUInt32;
-    std::set<uint64_t> SetUInt64;
-};
-
-class Account
-{
-public:
-    int64_t ID;
-    std::string Domain;
-    std::string Password;
-};
-
-class DirectoryInDTO
-{
-public:
-    std::string EventCallingFunction;
-    std::string UserAgent;
-    std::string Ip;
-    std::string AuthName;
-    std::string Domain;
-};
-
-class DirectoryOutDTO
-{
-public:
-    std::shared_ptr<DirectoryInDTO> InDTO;
-    std::shared_ptr<test::Account> Account;
-};
-
-
-static const std::string XmlDirectory = 
-R"(
-<document type="freeswitch/xml">
-    <section name="directory">
-        <domain name="{{Account.Domain}}">
-            <params>
-                <param name="dial-string" value="{presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(${dialed_user}@${dialed_domain})}"/>
-            </params>
-            <user id="{{Account.ID}}" cacheable="60000">
-                <params>
-                    <param name="password" value="{{Account.Password}}"/>
-                </params>
-                <variables>
-                    <variable name="toll_allow" value="domestic,international,local"/>
-                    <variable name="user_context" value="default"/>
-                    <variable name="callgroup" value="default"/>
-                    <variable name="effective_caller_id_name" value="{{Account.ID}}"/>
-                    <variable name="effective_caller_id_number" value="{{Account.ID}}"/>
-                    <variable name="outbound_caller_id_name" value="{{Account.ID}}"/>
-                    <variable name="outbound_caller_id_number" value="{{Account.ID}}"/>
-                </variables>
-            </user>
-        </domain>
-    </section>
-</document>
-)";
-static const std::string XmlSofia = 
-R"(
-<document type="freeswitch/xml">
-    <section name="configuration" description="Various Configuration">
-        <configuration name="sofia.conf" description="sofia Endpoint">
-            <profiles>
-                <profile name="public">
-                    <gateways>
-                        {% for gw in Gateways %}
-                        <gateway name="{{gw.ID}}">
-                            <param name="context" value="{{gw.Context}}"/>
-                            <param name="register" value="{{gw.Register}}"/>
-                            {% if gw.Register %}
-                            <param name="username" value="{{gw.Username}}"/>
-                            <param name="auth-username" value="{{gw.AuthUsername}}"/>
-                            <param name="password" value="{{gw.Password}}"/>
-                            <param name="register-transport" value="{{gw.RegisterTransport}}"/>
-                            <param name="realm" value="{{gw.Realm}}"/>
-                            <param name="register-proxy" value="{{gw.RegisterProxy}}"/>
-                            {% endif %}
-                            <param name="proxy" value="{{gw.Proxy}}"/>
-                            <param name="outbound-proxy" value="{{gw.OutboundProxy}}"/>
-                            <param name="expire-seconds" value="{{gw.ExpireSeconds}}"/>
-                            <param name="retry-seconds" value="{{gw.RetrySeconds}}"/>
-                            <param name="ping" value="{{gw.Ping}}"/>
-                            <param name="caller-id-in-from" value="{{gw.CallerIDInFrom}}"/>
-                            <param name="contact-in-ping" value="{{gw.ContactInPing}}"/>
-                            {% if gw.FromUser != "" %}
-                            <param name="from-user" value="{{gw.FromUser}}"/>
-                            {% endif %}
-                            {% if gw.FromDomain != "" %}
-                            <param name="from-domain" value="{{gw.FromDomain}}"/>
-                            {% endif %}
-                            {% if gw.ContactParams != "" %}
-                            <param name="contact-params" value="{{gw.ContactParams}}"/>
-                            {% endif %}
-                            <param name="extension-in-contact" value="{{gw.ExtensionInContact}}"/>
-                            {% if gw.Extension != "" %}
-                            <param name="extension" value="{{gw.Extension}}"/>
-                            {% endif %}
-                            <variables>
-                                {% for var in gw.Variables %}
-                                <variable name="{{var.Name}}" value="{{var.Value}}" direction="{{var.Direction}}"/>
-                                {% endfor %}
-                            </variables>
-                        </gateway>
-                        {% endfor %}
-                    </gateways>
-                </profile>
-            </profiles>
-        </configuration>
-    </section>
-</document>
-)";
-
-static const std::string XmlExtensionGatewayDialplan = 
-R"(
-<document type="freeswitch/xml">
-    <section name="dialplan" description="RE Dial Plan For FreeSwitch">
-        <context name="{{InDTO.CallerContext}}">
-            <extension name="extension_gateway_dialplan" continue="false">
-                <condition field="destination_number" expression="^${destination_number}$" break="on-false">
-                    <action application="log" data="用户网关:[{{ReverseAccount}}], 账号主叫[${caller_id_number}} => {{XNumber}}], 被叫[${destination_number}]"/>
-                    <action application="set" data="call_timeout=$${call_timeout}"/>
-                    <action application="set" data="execute_on_answer_sched=sched_hangup +$${hugup_duration}"/>
-                    <action application="set" data="hangup_after_bridge=true"/>
-                    <action application="set" data="ringback=$${cn-ring}"/>
-                    <action application="set" data="effective_caller_id_name={{XNumber}}"/>
-                    <action application="set" data="effective_caller_id_number={{XNumber}}"/>
-                    <action application="export" data="nolocal:absolute_codec_string=${global_codec_prefs}"/>
-                </condition>
-                {% if HangupCause != "" %}
-                <condition field="destination_number" expression="^${destination_number}$" break="on-true">
-                    <action application="export" data="hangup_cause__={{HangupCause}}"/>
-                    <action application="hangup" data="NORMAL_TEMPORARY_FAILURE"/>
-                </condition>
-                {% endif %}
-            </extension>
-        </context>
-    </section>
-</document>
-)";
-/*
-
-                {{% if CallTimeRange != "" %}}
-                <condition wday="1,2,3,4,5,6,7" time-of-day="{{CallTimeRange}}" break="on-false">
-                    <anti-action application="export" data="hangup_cause__=时间限制"/>
-                    <anti-action application="hangup" data="CALL_REJECTED"/>
-                </condition>
-                {{% endif %}}
-                <condition field="${sofia_contact(default/{{ReverseAccount}})}" expression="^error/user_not_registered$" break="on-true">
-                    <action application="hangup" data="GATEWAY_DOWN"/>
-                </condition>
-                {{% if Recording %}}
-                <condition field="${recording_path__}" expression="^$" break="never">
-                    <action application="export" data="recording_path__=archive/${strftime(%Y%m%d)}/${uuid}.mp3"/>
-                    <action application="set" data="media_bug_answer_req=true"/>
-                    <action application="set" data="recording_follow_transfer=true"/>
-                    <action application="set" data="enable_file_write_buffering=true"/>
-                    <action application="set" data="RECORD_STEREO=true"/>
-                    <action application="set" data="RECORD_USE_THREAD=true"/>
-                    <action application="set" data="RECORD_APPEND=true"/>
-                    <action application="set" data="execute_on_answer_rcd=record_session $${recordings_dir}/${recording_path__}"/>
-                </condition>
-                {{% endif %}}
-                <condition field="destination_number" expression="^${destination_number}$" break="never">
-                    <action application="set" data="continue_on_fail=USER_BUSY,NO_USER_RESPONSE"/>
-                    <action application="set" data="call_url=${regex(${sofia_contact(default/{{ReverseAccount}})}|^(.+)sip:(.+)@(.+)|%1sip:${destination_number}@%3)}"/>
-                    <action application="bridge" data="${call_url}"/>
-                    <action application="sleep" data="2000"/>
-                    <action application="bridge" data="${call_url}"/>
-                </condition>
-
- */
-}
-
-REGIST_MEMBER_JSON(
-    test::Account,
-    PLAIN(ID),
-    PLAIN(Domain),
-    PLAIN(Password)
-);
-
-REGIST_MEMBER_JSON(
-    test::DirectoryInDTO,
-    PLAIN(EventCallingFunction),
-    PLAIN(UserAgent),
-    PLAIN(Ip),
-    PLAIN(AuthName),
-    PLAIN(Domain)
-);
-
-REGIST_MEMBER_JSON(
-    test::DirectoryOutDTO,
-    PLAIN(Account)
-);
-
-REGIST_MEMBER_JSON(
-    test::SubObject,
-    NAME(String, "string"),
-    NAME(Int32, "int32")
-);
-
-//注册时要放到全局位置注册
-REGIST_MEMBER_JSON(
-    test::Object, 
-    NAME(Sub,"sub"),
-    NAME(SubPtr,"sub_ptr"),
-    NAME(VectorSub,"vector_sub"),
-    NAME(VectorSubPtr,"vector_sub_ptr"),
-    NAME(DateTime,"datetime"),
-    NAME(String,"string"),
-    NAME(Float,"float"),
-    NAME(Bool,"bool"),
-    NAME(Double,"double"),
-    NAME(Int8,"int8"),
-    NAME(Int16,"int16"),
-    NAME(Int32,"int32"),
-    NAME(Int64,"int64"),
-    NAME(UInt8,"uint8"),
-    NAME(UInt16,"uint16"),
-    NAME(UInt32,"uint32"),
-    NAME(UInt64,"uint64"),
-    NAME(VectorString,"vector_string"),
-    NAME(VectorFloat,"vector_float"),
-    NAME(VectorDouble,"vector_double"),
-    NAME(VectorInt8,"vector_int8"),
-    NAME(VectorInt16,"vector_int16"),
-    NAME(VectorInt32,"vector_int32"),
-    NAME(VectorInt64,"vector_int64"),
-    NAME(VectorUInt8,"vector_uint8"),
-    NAME(VectorUInt16,"vector_uint16"),
-    NAME(VectorUInt32,"vector_uint32"),
-    NAME(VectorUInt64,"vector_uint64"),
-    NAME(ListString,"list_string"),
-    NAME(ListFloat,"list_float"),
-    NAME(ListDouble,"list_double"),
-    NAME(ListInt8,"list_int8"),
-    NAME(ListInt16,"list_int16"),
-    NAME(ListInt32,"list_int32"),
-    NAME(ListInt64,"list_int64"),
-    NAME(ListUInt8,"list_uint8"),
-    NAME(ListUInt16,"list_uint16"),
-    NAME(ListUInt32,"list_uint32"),
-    NAME(ListUInt64,"list_uint64"),
-    NAME(SetString,"set_string"),
-    NAME(SetFloat,"set_float"),
-    NAME(SetDouble,"set_double"),
-    NAME(SetInt8,"set_int8"),
-    NAME(SetInt16,"set_int16"),
-    NAME(SetInt32,"set_int32"),
-    NAME(SetInt64,"set_int64"),
-    NAME(SetUInt8,"set_uint8"),
-    NAME(SetUInt16,"set_uint16"),
-    NAME(SetUInt32,"set_uint32"),
-    NAME(SetUInt64,"set_uint64")
-);
-
-REGIST_MEMBER_PARAM(
-    test::Object,
-    NAME(String,"string"),
-    NAME(Float,"float"),
-    NAME(Bool,"bool"),
-    NAME(Double,"double"),
-    NAME(Int8,"int8"),
-    NAME(Int16,"int16"),
-    NAME(Int32,"int32"),
-    NAME(Int64,"int64"),
-    NAME(UInt8,"uint8"),
-    NAME(UInt16,"uint16"),
-    NAME(UInt32,"uint32"),
-    NAME(UInt64,"uint64")
-);
+#include "obj.h"
+#include "json.h"
+#include "templates.h"
+#include "rabbit_queue.h"
 
 void TestJsonSerialize()
 {
@@ -497,9 +163,9 @@ void TestTemplateSerialize()
     try
     {
         inja::Environment env;
-        auto directory_tpl = env.parse(test::XmlDirectory);
-        auto sofia_tpl = env.parse(test::XmlSofia);
-        auto extension_gateway_tpl = env.parse(test::XmlExtensionGatewayDialplan);
+        auto directory_tpl = env.parse(XmlDirectory);
+        auto sofia_tpl = env.parse(XmlSofia);
+        auto extension_gateway_tpl = env.parse(XmlExtensionGatewayDialplan);
         std::string out;
         auto start = std::chrono::high_resolution_clock::now();
         for (int i=0; i < 100000; i++)
@@ -540,12 +206,41 @@ void TestDateTime()
     std::cout << add.ToString() << std::endl;
 }
 
+void TestRabbitMq()
+{
+    queue::RabbitMq::Instance()->Start("amqp://admin:admin@127.0.0.1:5672/");    
+    queue::RabbitQueue<test::SubObject> q("test");
+    std::thread publisher([&]()
+    {
+        int i = 100;
+        while(1)
+        {
+
+            auto data = std::make_shared<test::SubObject>();
+            data->Int32 = i++;
+            data->String = "测试队列";
+            q.Publish(data);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    });
+    q.Consume([](const std::shared_ptr<test::SubObject> &data)
+    {
+        return true;
+    });
+    while(1)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
+
 int main()
 {
-    TestDateTime();
-    TestJsonSerialize();
+    INFO("测试开始");
+    TestRabbitMq();
+    //TestDateTime();
+    //TestJsonSerialize();
     //TestParamSerialize();
-    //std::cout << test::XmlDirectory << std::endl;
+    //std::cout << XmlDirectory << std::endl;
     //TestTemplateSerialize();
     return 0;
 }
