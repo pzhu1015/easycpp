@@ -209,7 +209,7 @@ void TestDateTime()
 void TestRabbitMq()
 {
     queue::RabbitMq::Instance()->Start("amqp://admin:admin@127.0.0.1:5672/");    
-    queue::RabbitQueue<test::SubObject> q("test");
+    auto q = std::make_shared<queue::RabbitQueue>("test");
     std::thread publisher([&]()
     {
         int i = 100;
@@ -219,11 +219,11 @@ void TestRabbitMq()
             auto data = std::make_shared<test::SubObject>();
             data->Int32 = i++;
             data->String = "测试队列";
-            q.Publish(data);
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            q->Publish(serialize::JsonSerializer<test::SubObject>::ToString(data).data());
+            std::this_thread::sleep_for(std::chrono::seconds(10));
         }
     });
-    q.Consume([](const std::shared_ptr<test::SubObject> &data)
+    q->Consume([](const std::string &data)
     {
         return true;
     });
