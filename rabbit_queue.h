@@ -248,9 +248,7 @@ public:
         {
             INFO("连接停止开始: %s", this->_connection_str.data());
             this->_started.store(false);
-            INFO("连接停止开始1: %s", this->_connection_str.data());
             this->_connection->close();
-            INFO("连接停止开始2: %s", this->_connection_str.data());
             this->_task.wait();
             INFO("连接停止结束: %s", this->_connection_str.data());
             return true;
