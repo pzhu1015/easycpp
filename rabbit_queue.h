@@ -1,6 +1,5 @@
 #pragma once
 #include <json_serialize.h>
-#include <ev.h>
 #include <amqpcpp.h>
 #include <amqpcpp/libev.h>
 #include <atomic>
@@ -37,6 +36,24 @@ public:
     }
 
     virtual ~RabbitMqEventHandler() = default;
+
+    void Start()
+    {
+        INFO("启动事件线程");
+        this->_task = std::async(std::launch::async, [this]()
+        { 
+            INFO("事件监听开始");
+            ev_run(EV_DEFAULT, 0); 
+            INFO("事件监听结束");
+        });
+    }
+
+    void Stop()
+    {
+        INFO("结束事件线程");
+        ev_break(EV_DEFAULT, EVBREAK_ALL);
+        this->_task.wait();
+    }
 private:
     virtual void onError(AMQP::TcpConnection *connection, const char *message) override
     {
@@ -64,6 +81,7 @@ private:
 
     virtual void onDetached(AMQP::TcpConnection *connection) override 
     {
+        LibEvHandler::onDetached(connection);
         ERROR("detached");                
         if (this->Detach)
         {
@@ -74,6 +92,7 @@ private:
         }
     }
 public:
+    std::future<void> _task;
     std::future<void> _on_detach_task;
     std::future<void> _on_ready_task;
     OnCallBack Detach;
@@ -232,13 +251,7 @@ public:
                 this->_handler->Ready = std::bind(&RabbitMq::ReStoreChannel, this);
             }
             this->_connection = std::make_shared<AMQP::TcpConnection>(this->_handler.get(), AMQP::Address(this->_connection_str));
-            INFO("启动事件线程");
-            this->_task = std::async(std::launch::async, [this]()
-            { 
-                INFO("事件监听开始");
-                ev_run(EV_DEFAULT, 0); 
-                INFO("事件监听结束");
-            });
+            this->_handler->Start();
             INFO("连接启动结束: %s", this->_connection_str.data());
             return true;
         }
@@ -264,8 +277,7 @@ public:
                 INFO("连接关闭结束: [closed: %d][usable: %d][ready: %d]",
                     this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
             }
-            ev_break(EV_DEFAULT, EVBREAK_ALL);
-            this->_task.wait();
+            this->_handler->Stop();
             INFO("连接停止结束: [closed: %d][usable: %d][ready: %d]",
                 this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
             return true;
@@ -416,7 +428,6 @@ public:
         return &rabbitmq;
     }
 private:
-    std::future<void>                       _task;
     std::atomic<bool>                       _started;
     std::atomic<bool>                       _restarting;
     std::atomic<int64_t>                    _restart_count;
