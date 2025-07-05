@@ -20,7 +20,7 @@
 #define ERROR(...) ((void)0)
 #endif
 
-using OnDetach = std::function<void()>;
+using OnCallBack = std::function<bool()>;
 using OnConsume = std::function<bool(const std::string &data)>;
 using TcpChannelPtr = std::shared_ptr<AMQP::TcpChannel>;
 using TcpConnectionPtr = std::shared_ptr<AMQP::TcpConnection>;
@@ -51,6 +51,10 @@ private:
     virtual void onReady(AMQP::TcpConnection *connection) override 
     {
         INFO("ready");
+        this->_on_ready_task = std::async(std::launch::async, [this]()
+        {
+            this->Ready();
+        });
     }
 
     virtual void onClosed(AMQP::TcpConnection *connection) override 
@@ -63,15 +67,17 @@ private:
         ERROR("detached");                
         if (this->Detach)
         {
-            this->_task = std::async(std::launch::async, [this]()
+            this->_on_detach_task = std::async(std::launch::async, [this]()
             {
                 this->Detach();
             });
         }
     }
 public:
-    std::future<void> _task;
-    OnDetach Detach;
+    std::future<void> _on_detach_task;
+    std::future<void> _on_ready_task;
+    OnCallBack Detach;
+    OnCallBack Ready;
 };
 using RabbitMqEventHandlerPtr = std::shared_ptr<RabbitMqEventHandler>;
 
@@ -171,9 +177,13 @@ public:
 
     void Start(const TcpConnectionPtr &connection)
     {
+        if (!connection) return;
+        if (this->_channel)
+        {
+            this->_channel->close();
+        }
         if (this->_type == ChannelType::Read)
         {
-            if (!connection) return;
             this->_channel = std::make_shared<AMQP::TcpChannel>(connection.get());
             this->_channel->setQos(this->_qos);
             this->_channel->declareQueue(this->_name, AMQP::durable).
@@ -184,7 +194,6 @@ public:
         }
         else
         {
-            if (!connection) return;
             this->_channel = std::make_shared<AMQP::TcpChannel>(connection.get());
             this->_channel->declareQueue(this->_name, AMQP::durable).
             onSuccess([this](const std::string &name, int msgcount, int consumercount)
@@ -220,16 +229,14 @@ public:
             {
                 this->_handler = std::make_shared<RabbitMqEventHandler>(EV_DEFAULT);
                 this->_handler->Detach = std::bind(&RabbitMq::ReStart, this);
+                this->_handler->Ready = std::bind(&RabbitMq::ReStoreChannel, this);
             }
             this->_connection = std::make_shared<AMQP::TcpConnection>(this->_handler.get(), AMQP::Address(this->_connection_str));
-            INFO("启动事件线程: %s", this->_connection_str.data());
+            INFO("启动事件线程");
             this->_task = std::async(std::launch::async, [this]()
             { 
                 INFO("事件监听开始");
-                while (this->_started) 
-                {
-                    ev_run(EV_DEFAULT, EVRUN_ONCE); 
-                }
+                ev_run(EV_DEFAULT, 0); 
                 INFO("事件监听结束");
             });
             INFO("连接启动结束: %s", this->_connection_str.data());
@@ -246,11 +253,21 @@ public:
     {
         try
         {
-            INFO("连接停止开始: %s", this->_connection_str.data());
             this->_started.store(false);
-            this->_connection->close();
+            INFO("连接停止开始: [closed: %d][usable: %d][ready: %d]", 
+                 this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
+            if (!this->_connection->closed())
+            {
+                INFO("连接未关闭，开始关闭...");
+
+                this->_connection->close(true);
+                INFO("连接关闭结束: [closed: %d][usable: %d][ready: %d]",
+                    this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
+            }
+            ev_break(EV_DEFAULT, EVBREAK_ALL);
             this->_task.wait();
-            INFO("连接停止结束: %s", this->_connection_str.data());
+            INFO("连接停止结束: [closed: %d][usable: %d][ready: %d]",
+                this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
             return true;
         }
         catch(std::exception &ex)
@@ -260,35 +277,80 @@ public:
         return false;
     }
 
-    void ReStart()
+    bool ReStart()
     {
         try
         {
-            if (this->_restarting.exchange(true)) return;
+            INFO("开始重新连接...");
+            if (this->_restarting.exchange(true)) return true;
+            this->_restart_count++;
             std::this_thread::sleep_for(std::chrono::seconds(5));
-            if (!this->Stop()) return;
-            if (!this->Start(this->_connection_str)) return;
+            if (!this->Stop()) 
             {
-                std::shared_lock<std::shared_mutex> read_lock(this->_read_channel_mutex);
-                for (auto itr : this->_read_channels)
-                {
-                    itr.second->Start(this->_connection);
-                    itr.second->Consume();
-                }
+                this->_restarting.store(false);
+                INFO("连接停止失败: [closed: %d][usable: %d][ready: %d]",
+                    this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
+                return false;
             }
+
+            if (!this->Start(this->_connection_str))
             {
-                std::shared_lock<std::shared_mutex> read_lock(this->_write_channel_mutex);
-                for (auto itr : this->_write_channels)
-                {
-                    itr.second->Start(this->_connection);
-                }
+                this->_restarting.store(false);
+                INFO("连接启动失败: [closed: %d][usable: %d][ready: %d]",
+                    this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
+                return false;
             }
+            INFO("连接启动成功: [closed: %d][usable: %d][ready: %d]", 
+                 this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
             this->_restarting.store(false);
+            INFO("重新连接结束, 重连次数[%lld]...", this->_restart_count.load());
+            return true;
         }
         catch(std::exception &ex)
         {
-            ERROR(ex.what());
+            ERROR("重连接异常: %s", ex.what());
         }
+        this->_restarting.store(false);
+        return false;
+    }
+
+    bool ReStoreChannel()
+    {
+        try
+        {
+            if (this->_restart_count.load() == 0) return true;
+            INFO("通道恢复开始");
+            {
+                INFO("消费者恢复开始: [%llu]", this->_read_channels.size());
+                std::shared_lock<std::shared_mutex> read_lock(this->_read_channel_mutex);
+                for (auto itr : this->_read_channels)
+                {
+                    INFO("消费者恢复开始: [%s]", itr.first.data());
+                    itr.second->Start(this->_connection);
+                    itr.second->Consume();
+                    INFO("消费者恢复结束: [%s]", itr.first.data());
+                }
+                INFO("消费者恢复成功: [%llu]", this->_read_channels.size());
+            }
+            {
+                INFO("生产者恢复开始: [%llu]", this->_write_channels.size());
+                std::shared_lock<std::shared_mutex> read_lock(this->_write_channel_mutex);
+                for (auto itr : this->_write_channels)
+                {
+                    INFO("生产者恢复开始: [%s]", itr.first.data());
+                    itr.second->Start(this->_connection);
+                    INFO("生产者恢复结束: [%s]", itr.first.data());
+                }
+                INFO("生产者恢复成功: [%llu]", this->_write_channels.size());
+            }
+            INFO("通道恢复结束");
+            return true;
+        }
+        catch(std::exception &ex)
+        {
+            ERROR("通道恢复异常: %s", ex.what());
+        }
+        return false;
     }
 
     TcpConnectionPtr Connection()
@@ -357,6 +419,7 @@ private:
     std::future<void>                       _task;
     std::atomic<bool>                       _started;
     std::atomic<bool>                       _restarting;
+    std::atomic<int64_t>                    _restart_count;
     std::string                             _connection_str;
     std::shared_mutex                       _read_channel_mutex;
     std::shared_mutex                       _write_channel_mutex;
