@@ -206,29 +206,68 @@ void TestDateTime()
     std::cout << add.ToString() << std::endl;
 }
 
+static std::atomic<int64_t> __id;
+static std::set<int64_t> __objs;
+static std::shared_mutex __mutex;
+
+void AddObj(int64_t id)
+{
+    std::unique_lock<std::shared_mutex> write_lock(__mutex);
+    __objs.insert(id);
+}
+
+void RemoveObj(int64_t id)
+{
+    std::unique_lock<std::shared_mutex> write_lock(__mutex);
+    __objs.erase(id);
+}
+
+size_t CountObj()
+{
+    std::shared_lock<std::shared_mutex> read_lock(__mutex);
+    return __objs.size();
+}
+
 void TestRabbitMq()
 {
     queue::RabbitMq::Instance()->Start("amqp://admin:admin@127.0.0.1:5672/");    
-    auto q = std::make_shared<queue::RabbitQueue>("test");
-    std::thread publisher([&]()
-    {
-        int i = 100;
-        while(1)
-        {
 
-            auto data = std::make_shared<test::SubObject>();
-            data->Int32 = i++;
-            data->String = "测试队列";
-            q->Publish(serialize::JsonSerializer<test::SubObject>::ToString(data).data());
-            std::this_thread::sleep_for(std::chrono::seconds(10));
-        }
-    });
-    q->Consume([](const std::string &data)
+    std::vector<std::thread> threads;
+    for (int i=0; i < 50; i++)
     {
-        return true;
-    });
+        threads.emplace_back(std::thread([](int idx)
+        {
+            std::string queue_name = "test_";
+            queue_name.append(std::to_string(idx));
+            auto q = std::make_shared<queue::RabbitQueue>(queue_name);
+            q->Consume([](const std::string &data)
+            {
+                auto obj = serialize::JsonSerializer<test::SubObject>::FromStringPtr(data);
+                RemoveObj(obj->Int32);
+                return true;
+            });
+            for (int n=0; n < 100; n++)
+            {
+                auto obj = std::make_shared<test::SubObject>();
+                obj->Int32 = __id++;
+                obj->String = "测试队列";
+                auto result = q->Publish(serialize::JsonSerializer<test::SubObject>::ToString(obj).data());
+                if (result)
+                {
+                    AddObj(obj->Int32);
+                }
+                else
+                {
+                    ERROR("*******************************");
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }, i));
+    }
+
     while(1)
     {
+        INFO("====================================================>objs: %llu", CountObj());
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
