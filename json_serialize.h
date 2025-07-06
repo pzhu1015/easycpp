@@ -9,7 +9,7 @@
 #include "reflection.h"
 
 #ifdef EASYCPP_LOGGING
-#include <logger.h>
+#include "logger.h"
 #else
 #define DEBUG(...)  ((void)0)
 #define INFO(...) ((void)0)

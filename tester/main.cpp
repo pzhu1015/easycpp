@@ -225,6 +225,10 @@ void RemoveObj(int64_t id)
 size_t CountObj()
 {
     std::shared_lock<std::shared_mutex> read_lock(__mutex);
+    for (auto i : __objs)
+    {
+        INFO("obj: %lld", i);
+    }
     return __objs.size();
 }
 
@@ -233,7 +237,7 @@ void TestRabbitMq()
     queue::RabbitMq::Instance()->Start("amqp://admin:admin@127.0.0.1:5672/");    
 
     std::vector<std::thread> threads;
-    for (int i=0; i < 50; i++)
+    for (int i=0; i < 20; i++)
     {
         threads.emplace_back(std::thread([](int idx)
         {
@@ -245,8 +249,8 @@ void TestRabbitMq()
                 auto obj = serialize::JsonSerializer<test::SubObject>::FromStringPtr(data);
                 RemoveObj(obj->Int32);
                 return true;
-            });
-            for (int n=0; n < 100; n++)
+            }, 500);
+            for (int n=0; n < 1; n++)
             {
                 auto obj = std::make_shared<test::SubObject>();
                 obj->Int32 = __id++;
@@ -260,7 +264,7 @@ void TestRabbitMq()
                 {
                     ERROR("*******************************");
                 }
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
             }
         }, i));
     }
@@ -268,7 +272,7 @@ void TestRabbitMq()
     while(1)
     {
         INFO("====================================================>objs: %llu", CountObj());
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::seconds(2));
     }
 }
 
