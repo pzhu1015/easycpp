@@ -250,21 +250,14 @@ void TestRabbitMq()
                 RemoveObj(obj->Int32);
                 return true;
             }, 500);
-            for (int n=0; n < 1; n++)
+            for (int n=0; n < 2000; n++)
             {
                 auto obj = std::make_shared<test::SubObject>();
                 obj->Int32 = __id++;
                 obj->String = "测试队列";
-                auto result = q->Publish(serialize::JsonSerializer<test::SubObject>::ToString(obj).data());
-                if (result)
-                {
-                    AddObj(obj->Int32);
-                }
-                else
-                {
-                    ERROR("*******************************");
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                AddObj(obj->Int32);
+                q->Publish(serialize::JsonSerializer<test::SubObject>::ToString(obj).data());
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
         }, i));
     }

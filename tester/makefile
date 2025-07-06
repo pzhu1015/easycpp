@@ -18,7 +18,7 @@ DYNAMIC_LIBS = -L/usr/local/lib64 -lamqpcpp -Wl,-rpath=/usr/local/lib64 -lpthrea
 
 MACROS = -DPICOJSON_USE_INT64 -DEASYCPP_LOGGING
 CHECKS = -Wpointer-arith -Wcast-align
-CCFLAGS = -g $(CHECKS) $(MACROS) -fPIC -m64 -std=c++17
+CCFLAGS = -O2 $(CHECKS) $(MACROS) -fPIC -m64 -std=c++17
 
 all:$(SERVICE_BIN)
 

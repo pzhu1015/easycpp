@@ -23,6 +23,8 @@ using OnCallBack = std::function<bool()>;
 using OnConsume = std::function<bool(const std::string &data)>;
 using TcpChannelPtr = std::shared_ptr<AMQP::TcpChannel>;
 using TcpConnectionPtr = std::shared_ptr<AMQP::TcpConnection>;
+template <typename BASE=AMQP::Tagger>
+using ReliablePtr = std::shared_ptr<AMQP::Reliable<BASE>>;
 
 namespace queue
 {
@@ -166,17 +168,20 @@ public:
 
     void Publish(const std::string &data, uint8_t priority)
     {
-        if (!this->_channel) return;
+        if (!this->_channel || !this->_reliable) return;
         //this->_channel->publish("", this->_name, data);
-        AMQP::Reliable reliable(*(this->_channel.get()));
-        reliable.publish("", this->_name, data).
-        onAck([this]()
+
+        AMQP::Envelope envelope(data);
+        envelope.setPriority(priority);
+        this->_reliable->publish("", this->_name, envelope).
+        onAck([this, &data]()
         {
-            INFO("[%s] (publisher)onAck", this->_name.data());
+            //INFO("[%s] (publisher)onAck", this->_name.data());
+            //INFO("[%s]生产数据: %s", this->_name.data(), data.data());
         }).
         onNack([this]()
         {
-            INFO("[%s] (publisher)onNack", this->_name.data());
+            //INFO("[%s] (publisher)onNack", this->_name.data());
         }).
         onLost([this]()
         {
@@ -227,6 +232,7 @@ public:
                 INFO("[%s]队列生产(publisher)声明成功, [msgs: %d][consumers: %d]", this->_name.data(), msgs, consumers);
             });
             this->_sem.wait();
+            this->_reliable = std::make_shared<AMQP::Reliable<>>(*(this->_channel.get()));
         }
     }
 private:
@@ -236,6 +242,7 @@ private:
     OnConsume       _on_consume;
     ChannelType     _type;
     TcpChannelPtr   _channel;
+    ReliablePtr<>   _reliable;
 };
 using RabbitChannelPtr = std::shared_ptr<RabbitChannel>;
 
@@ -494,30 +501,27 @@ public:
 
     void Consume(const OnConsume &on_consume, int qos = 100)
     {
-        INFO("[%s]启动消费开始", this->_name.data());
         auto channel = this->get_read_channel(on_consume, qos);
         if (!channel) return;
 
         channel->Consume();
-        INFO("[%s]启动消费结束", this->_name.data());
     }
 
-    bool Publish(const std::string &data, uint8_t priority = 0)
+    void Publish(const std::string &data, uint8_t priority = 0)
     {
         try
         {
             auto channel = this->get_write_channel();
-            if (!channel) return false;
+            if (!channel) return;
 
             channel->Publish(data, priority);
-            INFO("[%s]生产数据: %s", this->_name.data(), data.data());
-            return true;
+            return;
         }
         catch(std::exception &ex)
         {
             ERROR("[%s] %s, 发送异常数据: %s", this->_name.data(), ex.what(), data.data());
         }
-        return false;
+        return;
     }
 
 private:
