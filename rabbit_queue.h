@@ -8,7 +8,7 @@
 #include <memory>
 #include <shared_mutex>
 #include <functional>
-#include "semaphore.h"
+#include "sem.h"
 
 #ifdef EASYCPP_LOGGING
 #include "logger.h"
@@ -53,6 +53,7 @@ private:
     virtual void onError(AMQP::TcpConnection *connection, const char *message) override
     {
         ERROR(message);
+        this->Signal();
     }
 
     virtual void onConnected(AMQP::TcpConnection *connection) override 
@@ -73,6 +74,7 @@ private:
     virtual void onClosed(AMQP::TcpConnection *connection) override 
     {
         ERROR("closed");
+        this->Signal();
     }
 
     virtual void onDetached(AMQP::TcpConnection *connection) override 
@@ -99,6 +101,22 @@ enum class ChannelType
     Read = 0,
     Write = 1
 };
+
+static std::string ToString(ChannelType type)
+{
+    if (type == ChannelType::Read)
+    {
+        return "Consumer";
+    }
+    else if (type == ChannelType::Write)
+    {
+        return "Publisher";
+    }
+    else
+    {
+        return "Unknown";
+    }
+}
 
 class RabbitChannel
 {
@@ -132,6 +150,7 @@ public:
     void Consume()
     {
         if (!this->_channel) return;
+        Semaphore sem;
         this->_channel->consume("").
         onReceived([this](
             const AMQP::Message &message,
@@ -156,14 +175,17 @@ public:
                 ERROR("[%s] %s", this->_name.data(), ex.what());
             }
         }).
-        onSuccess([this]()
+        onSuccess([this, &sem]()
         {
             INFO("[%s] Consume onSuccess", this->_name.data());
+            sem.post();
         }).
-        onError([this](const char* message)
+        onError([this, &sem](const char* message)
         {
             ERROR("[%s] Consume onError: %s", this->_name.data(), message);
+            sem.post();
         });
+        sem.timed_wait(2000);
     }
 
     void Publish(const std::string &data, uint8_t priority)
@@ -187,7 +209,7 @@ public:
         }).
         onError([this](const char* message)
         {
-            ERROR("[%] (publisher)onError: %s", this->_name.data(), message);
+            ERROR("[%s] (publisher)onError: %s", this->_name.data(), message);
         });
     }
 
@@ -198,50 +220,37 @@ public:
         {
             this->_channel->close();
         }
-        if (this->_type == ChannelType::Read)
+
+        Semaphore sem;
+        this->_channel = std::make_shared<AMQP::TcpChannel>(connection.get());
+        this->_channel->onReady([this]()
         {
-            this->_channel = std::make_shared<AMQP::TcpChannel>(connection.get());
-            this->_channel->setQos(this->_qos);
-            this->_channel->onReady([this]()
-            {
-                this->_read_sem.post();
-                INFO("[%s]通道(consumer)onReady", this->_name.data());
-            });
-            this->_channel->onError([this](const char* message)
-            {
-                ERROR("[%s]通道(consumer)onError: %s", this->_name.data(), message);
-            });
-            this->_channel->declareQueue(this->_name, AMQP::durable).
-            onSuccess([this](const std::string &name, int msgs, int consumers)
-            {
-                INFO("[%s]队列消费(consumer)声明成功, [msgs: %d][consumers: %d]", this->_name.data(), msgs, consumers);
-            });
-            this->_read_sem.wait();
+            INFO("[%s]通道(%s)onReady", this->_name.data(), ToString(this->_type).data());
+        });
+        this->_channel->onError([this, &sem](const char* message)
+        {
+            ERROR("[%s]通道(%s)onError: %s", this->_name.data(), ToString(this->_type).data(), message);
+            sem.post();
+        });
+        this->_channel->declareQueue(this->_name, AMQP::durable).
+        onSuccess([this, &sem](const std::string &name, int msgs, int consumers)
+        {
+            INFO("[%s]队列(%s)声明成功, [msgs: %d][consumers: %d]", this->_name.data(), ToString(this->_type).data(), msgs, consumers);
+            sem.post();
+        });
+        sem.timed_wait(2000);
+        if (this->_type == ChannelType::Write)
+        {
+            this->_reliable = std::make_shared<AMQP::Reliable<>>(*(this->_channel.get()));
         }
         else
         {
-            this->_channel = std::make_shared<AMQP::TcpChannel>(connection.get());
-            this->_channel->onReady([this]()
-            {
-                this->_write_sem.post();
-                INFO("[%s]通道(publisher)onReady", this->_name.data());
-            });
-            this->_channel->onError([this](const char* message)
-            {
-                ERROR("[%s]通道(publisher)onError: %s", this->_name.data(), message);
-            });
-            this->_channel->declareQueue(this->_name, AMQP::durable).
-            onSuccess([this](const std::string &name, int msgs, int consumers)
-            {
-                INFO("[%s]队列生产(publisher)声明成功, [msgs: %d][consumers: %d]", this->_name.data(), msgs, consumers);
-            });
-            this->_reliable = std::make_shared<AMQP::Reliable<>>(*(this->_channel.get()));
-            this->_write_sem.wait();
+            this->_channel->setQos(this->_qos);
+            this->Consume();
         }
+        INFO("[%s](%s)启动成功", this->_name.data(), ToString(this->_type).data());
     }
 private:
-    Semaphore       _read_sem;
-    Semaphore       _write_sem;
     int             _qos;
     std::string     _name;
     OnConsume       _on_consume;
@@ -391,7 +400,6 @@ public:
                 {
                     INFO("消费者恢复开始: [队列名称: %s]", itr.first.data());
                     itr.second->Start(this->_connection);
-                    itr.second->Consume();
                     INFO("消费者恢复结束: [队列名称: %s]", itr.first.data());
                 }
                 INFO("消费者恢复成功: [通道个数: %llu]", this->_read_channels.size());
@@ -509,7 +517,7 @@ public:
         auto channel = this->get_read_channel(on_consume, qos);
         if (!channel) return;
 
-        channel->Consume();
+        //channel->Consume();
     }
 
     void Publish(const std::string &data, uint8_t priority = 0)

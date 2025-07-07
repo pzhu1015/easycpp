@@ -237,7 +237,7 @@ void TestRabbitMq()
     queue::RabbitMq::Instance()->Start("amqp://admin:admin@127.0.0.1:5672/");    
 
     std::vector<std::thread> threads;
-    for (int i=0; i < 20; i++)
+    for (int i=0; i < 200; i++)
     {
         threads.emplace_back(std::thread([](int idx)
         {
