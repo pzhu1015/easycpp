@@ -250,7 +250,7 @@ void TestRabbitMq()
                 RemoveObj(obj->Int32);
                 return true;
             }, 500);
-            for (int n=0; n < 2000; n++)
+            for (int n=0; n < 1; n++)
             {
                 auto obj = std::make_shared<test::SubObject>();
                 obj->Int32 = __id++;

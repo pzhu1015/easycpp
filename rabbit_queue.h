@@ -1,5 +1,4 @@
 #pragma once
-#include "semaphore.h"
 #include <amqpcpp.h>
 #include <amqpcpp/libev.h>
 #include <atomic>
@@ -9,9 +8,10 @@
 #include <memory>
 #include <shared_mutex>
 #include <functional>
+#include "semaphore.h"
 
 #ifdef EASYCPP_LOGGING
-#include <logger.h>
+#include "logger.h"
 #else
 #define DEBUG(...)  ((void)0)
 #define INFO(...) ((void)0)
@@ -169,8 +169,6 @@ public:
     void Publish(const std::string &data, uint8_t priority)
     {
         if (!this->_channel || !this->_reliable) return;
-        //this->_channel->publish("", this->_name, data);
-
         AMQP::Envelope envelope(data);
         envelope.setPriority(priority);
         this->_reliable->publish("", this->_name, envelope).
@@ -204,6 +202,11 @@ public:
         {
             this->_channel = std::make_shared<AMQP::TcpChannel>(connection.get());
             this->_channel->setQos(this->_qos);
+            this->_channel->onReady([this]()
+            {
+                this->_read_sem.post();
+                INFO("[%s]通道(consumer)onReady", this->_name.data());
+            });
             this->_channel->onError([this](const char* message)
             {
                 ERROR("[%s]通道(consumer)onError: %s", this->_name.data(), message);
@@ -213,13 +216,14 @@ public:
             {
                 INFO("[%s]队列消费(consumer)声明成功, [msgs: %d][consumers: %d]", this->_name.data(), msgs, consumers);
             });
+            this->_read_sem.wait();
         }
         else
         {
             this->_channel = std::make_shared<AMQP::TcpChannel>(connection.get());
             this->_channel->onReady([this]()
             {
-                this->_sem.post();
+                this->_write_sem.post();
                 INFO("[%s]通道(publisher)onReady", this->_name.data());
             });
             this->_channel->onError([this](const char* message)
@@ -231,12 +235,13 @@ public:
             {
                 INFO("[%s]队列生产(publisher)声明成功, [msgs: %d][consumers: %d]", this->_name.data(), msgs, consumers);
             });
-            this->_sem.wait();
             this->_reliable = std::make_shared<AMQP::Reliable<>>(*(this->_channel.get()));
+            this->_write_sem.wait();
         }
     }
 private:
-    Semaphore       _sem;
+    Semaphore       _read_sem;
+    Semaphore       _write_sem;
     int             _qos;
     std::string     _name;
     OnConsume       _on_consume;
