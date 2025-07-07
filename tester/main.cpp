@@ -206,66 +206,67 @@ void TestDateTime()
     std::cout << add.ToString() << std::endl;
 }
 
-static std::atomic<int64_t> __id;
-static std::set<int64_t> __objs;
-static std::shared_mutex __mutex;
-
-void AddObj(int64_t id)
-{
-    std::unique_lock<std::shared_mutex> write_lock(__mutex);
-    __objs.insert(id);
-}
-
-void RemoveObj(int64_t id)
-{
-    std::unique_lock<std::shared_mutex> write_lock(__mutex);
-    __objs.erase(id);
-}
-
-size_t CountObj()
-{
-    std::shared_lock<std::shared_mutex> read_lock(__mutex);
-    for (auto i : __objs)
-    {
-        INFO("obj: %lld", i);
-    }
-    return __objs.size();
-}
-
 void TestRabbitMq()
 {
     queue::RabbitMq::Instance()->Start("amqp://admin:admin@127.0.0.1:5672/");    
 
     std::vector<std::thread> threads;
-    for (int i=0; i < 200; i++)
+    for (int i=0; i < 20; i++)
     {
         threads.emplace_back(std::thread([](int idx)
         {
+            std::atomic<int64_t> id;
+            std::set<int64_t> objs;
+            std::shared_mutex mu;
+
+            auto CountObj = [&objs, &mu]() -> size_t
+            {
+                std::shared_lock<std::shared_mutex> read_lock(mu);
+                return objs.size();
+            };
+
+            auto AddObj = [&objs, &mu](int int32)
+            {
+                std::unique_lock<std::shared_mutex> write_lock(mu);
+                objs.insert(int32);
+            };
+
+            auto RemoveObj = [&objs, &mu](int int32)
+            {
+                std::unique_lock<std::shared_mutex> write_lock(mu);
+                objs.erase(int32);
+            };
+
             std::string queue_name = "test_";
             queue_name.append(std::to_string(idx));
             auto q = std::make_shared<queue::RabbitQueue>(queue_name);
-            q->Consume([](const std::string &data)
+            q->Consume([&RemoveObj](const std::string &data)
             {
                 auto obj = serialize::JsonSerializer<test::SubObject>::FromStringPtr(data);
                 RemoveObj(obj->Int32);
                 return true;
             }, 500);
-            for (int n=0; n < 1; n++)
+            for (int n=0; n < 2000; n++)
             {
                 auto obj = std::make_shared<test::SubObject>();
-                obj->Int32 = __id++;
+                obj->Int32 = id++;
                 obj->String = "测试队列";
-                AddObj(obj->Int32);
                 q->Publish(serialize::JsonSerializer<test::SubObject>::ToString(obj).data());
+                AddObj(obj->Int32);
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
+
+            while(1)
+            {
+                INFO("====================================================>[%s]: %llu", queue_name.data(), CountObj());
+                std::this_thread::sleep_for(std::chrono::seconds(2));
             }
         }, i));
     }
 
     while(1)
     {
-        INFO("====================================================>objs: %llu", CountObj());
-        std::this_thread::sleep_for(std::chrono::seconds(2));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
 

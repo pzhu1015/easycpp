@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <mutex>
 
 namespace logger
 {
@@ -18,10 +19,12 @@ enum class LogLevel {
 // 日志配置
 struct LogConfig {
     static LogLevel min_level;  // 最小日志级别
+    static std::mutex mutex;
 };
 
 // 初始化配置默认值
 LogLevel LogConfig::min_level = LogLevel::DEBUG;
+std::mutex LogConfig::mutex;
 
 // ANSI 颜色代码
 constexpr const char* COLOR_DEBUG = "\033[36m";   // 青色
@@ -31,7 +34,7 @@ constexpr const char* COLOR_ERROR = "\033[31m";   // 红色
 constexpr const char* COLOR_RESET = "\033[0m";    // 重置颜色
 
 // 获取当前时间字符串
-std::string current_time() {
+static std::string current_time() {
     auto now = std::chrono::system_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 now.time_since_epoch()) % 1000;
@@ -47,7 +50,8 @@ std::string current_time() {
 }
 
 // 核心日志函数
-void log_message(LogLevel level, const char* file, int line, const char* fmt, ...) {
+static void log_message(LogLevel level, const char* file, int line, const char* fmt, ...) {
+    std::unique_lock<std::mutex> lock(LogConfig::mutex);
     // 级别过滤
     if (level < LogConfig::min_level) return;
     
