@@ -211,7 +211,7 @@ void TestRabbitMq()
     queue::RabbitMq::Instance()->Start("amqp://admin:admin@127.0.0.1:5672/");    
 
     std::vector<std::thread> threads;
-    for (int i=0; i < 20; i++)
+    for (int i=0; i < 100; i++)
     {
         threads.emplace_back(std::thread([](int idx)
         {
@@ -246,7 +246,7 @@ void TestRabbitMq()
                 RemoveObj(obj->Int32);
                 return true;
             }, 500);
-            for (int n=0; n < 2000; n++)
+            for (int n=0; n < 10; n++)
             {
                 auto obj = std::make_shared<test::SubObject>();
                 obj->Int32 = id++;
@@ -258,7 +258,16 @@ void TestRabbitMq()
 
             while(1)
             {
-                INFO("====================================================>[%s]: %llu", queue_name.data(), CountObj());
+                auto count = CountObj();
+                if (count > 0)
+                {
+                    ERROR("=============================================%s]: %llu", queue_name.data(), count);
+                }
+                else
+                {
+                    INFO("==============================================%s]: %llu", queue_name.data(), count);
+                }
+
                 std::this_thread::sleep_for(std::chrono::seconds(2));
             }
         }, i));

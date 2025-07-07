@@ -41,7 +41,7 @@ public:
 
     void Wait()
     {
-        _sem.wait();
+        _sem.timed_wait(10000);
     }
 
     void Signal()
@@ -160,8 +160,9 @@ public:
         {
             try
             {
+                //std::unique_lock<std::mutex> lock(this->_mutex);
                 auto data = std::string(message.body(), message.bodySize());
-                INFO("[%s] (%s)onReceived: [%llu]%s", this->_name.data(), ToString(this->_type).data(), delivery_tag, data.data());
+                INFO("[%s] (%s) onReceived: [%llu]%s", this->_name.data(), ToString(this->_type).data(), delivery_tag, data.data());
                 if (this->_on_consume && this->_on_consume(data))
                 {
                     if (this->_channel)
@@ -177,68 +178,77 @@ public:
         }).
         onSuccess([this, &sem]()
         {
-            INFO("[%s] (%s)onSuccess", this->_name.data(), ToString(this->_type).data());
+            INFO("[%s] (%s) onSuccess", this->_name.data(), ToString(this->_type).data());
             sem.post();
         }).
         onError([this, &sem](const char* message)
         {
-            ERROR("[%s] (%s)onError: %s", this->_name.data(), ToString(this->_type).data(), message);
+            ERROR("[%s] (%s) onError: %s", this->_name.data(), ToString(this->_type).data(), message);
             sem.post();
         });
-        sem.timed_wait(5000);
+        sem.timed_wait(10000);
     }
 
     void Publish(const std::string &data, uint8_t priority)
     {
+        std::unique_lock<std::mutex> lock(this->_mutex);
         if (!this->_channel || !this->_reliable) return;
 
         AMQP::Envelope envelope(data);
         envelope.setPriority(priority);
+        envelope.setDeliveryMode(2);
         this->_reliable->publish("", this->_name, envelope).
-        onAck([this]()
+        onAck([this, data]()
         {
-            INFO("[%s] (%s)onAck", this->_name.data(), ToString(this->_type).data());
+            INFO("[%s] (%s) onAck: %s", this->_name.data(), ToString(this->_type).data(), data.data());
         }).
         onNack([this]()
         {
-            INFO("[%s] (%s)onNack", this->_name.data(), ToString(this->_type).data());
+            INFO("[%s] (%s) onNack", this->_name.data(), ToString(this->_type).data());
         }).
         onLost([this]()
         {
-            ERROR("[%s] (%s)onLost", this->_name.data(), ToString(this->_type).data());
+            ERROR("[%s] (%s) onLost", this->_name.data(), ToString(this->_type).data());
         }).
         onError([this](const char* message)
         {
-            ERROR("[%s] (%s)onError: %s", this->_name.data(), ToString(this->_type).data(), message);
+            ERROR("[%s] (%s) onError: %s", this->_name.data(), ToString(this->_type).data(), message);
         });
     }
 
     void Start(const TcpConnectionPtr &connection)
     {
-        if (!connection) return;
+        if (!connection || !connection->ready()) 
+        {
+            ERROR("[%s] Connection not ready", this->_name.data());
+            return;
+        }
+
         if (this->_channel)
         {
             this->_channel->close();
         }
 
-        Semaphore sem;
+        Semaphore channel_sem, queue_sem;
         this->_channel = std::make_shared<AMQP::TcpChannel>(connection.get());
-        this->_channel->onReady([this]()
+        this->_channel->onReady([this, &channel_sem]()
         {
             INFO("[%s] (%s) Channel onReady", this->_name.data(), ToString(this->_type).data());
+            channel_sem.post();
         });
-        this->_channel->onError([this, &sem](const char* message)
+        this->_channel->onError([this, &channel_sem](const char* message)
         {
             ERROR("[%s] (%s) Channel onError: %s", this->_name.data(), ToString(this->_type).data(), message);
-            sem.post();
+            channel_sem.post();
         });
         this->_channel->declareQueue(this->_name, AMQP::durable).
-        onSuccess([this, &sem](const std::string &name, int msgs, int consumers)
+        onSuccess([this, &queue_sem](const std::string &name, int msgs, int consumers)
         {
             INFO("[%s] (%s) Queue onSuccess, [msgs: %d][consumers: %d]", this->_name.data(), ToString(this->_type).data(), msgs, consumers);
-            sem.post();
+            queue_sem.post();
         });
-        sem.timed_wait(5000);
+        channel_sem.timed_wait(10000);
+        queue_sem.timed_wait(10000);
         if (this->_type == ChannelType::Write)
         {
             this->_reliable = std::make_shared<AMQP::Reliable<>>(*(this->_channel.get()));
@@ -248,7 +258,7 @@ public:
             this->_channel->setQos(this->_qos);
             this->Consume();
         }
-        INFO("[%s](%s) Start", this->_name.data(), ToString(this->_type).data());
+        INFO("[%s] (%s) Start", this->_name.data(), ToString(this->_type).data());
     }
 private:
     int             _qos;
@@ -257,6 +267,7 @@ private:
     ChannelType     _type;
     TcpChannelPtr   _channel;
     ReliablePtr<>   _reliable;
+    std::mutex      _mutex;
 };
 using RabbitChannelPtr = std::shared_ptr<RabbitChannel>;
 
