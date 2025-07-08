@@ -8,7 +8,6 @@
 #include <memory>
 #include <shared_mutex>
 #include <functional>
-#include "sem.h"
 
 #ifdef EASYCPP_LOGGING
 #include "logger.h"
@@ -19,7 +18,8 @@
 #define ERROR(...) ((void)0)
 #endif
 
-using OnCallBack = std::function<bool()>;
+using OnDetach = std::function<void(AMQP::TcpConnection*)>;
+using OnReady = std::function<void(AMQP::TcpConnection*)>;
 using OnConsume = std::function<bool(const std::string &data)>;
 using TcpChannelPtr = std::shared_ptr<AMQP::TcpChannel>;
 using TcpConnectionPtr = std::shared_ptr<AMQP::TcpConnection>;
@@ -31,29 +31,23 @@ namespace queue
 class RabbitMqEventHandler : public AMQP::LibEvHandler
 {
 public:
-    RabbitMqEventHandler(struct ev_loop *loop)
+    RabbitMqEventHandler(
+        struct ev_loop *loop, 
+        const OnDetach &on_deatch,
+        const OnReady &on_ready)
     :
-    AMQP::LibEvHandler(loop)
+    AMQP::LibEvHandler(loop),
+    _on_detach(on_deatch),
+    _on_ready(on_ready)
     {
     }
 
     virtual ~RabbitMqEventHandler() = default;
 
-    void Wait()
-    {
-        _sem.timed_wait(10000);
-    }
-
-    void Signal()
-    {
-        _sem.post();
-    }
-
 private:
     virtual void onError(AMQP::TcpConnection *connection, const char *message) override
     {
         ERROR(message);
-        this->Signal();
     }
 
     virtual void onConnected(AMQP::TcpConnection *connection) override 
@@ -64,249 +58,190 @@ private:
     virtual void onReady(AMQP::TcpConnection *connection) override 
     {
         INFO("ready");
-        this->Signal();
-        if (this->Ready)
+        if (this->_on_ready)
         {
-            this->Ready();
+            this->_on_ready(connection);
         }
     }
 
     virtual void onClosed(AMQP::TcpConnection *connection) override 
     {
         ERROR("closed");
-        this->Signal();
     }
 
     virtual void onDetached(AMQP::TcpConnection *connection) override 
     {
         ERROR("detached");                
-        this->Signal();
-        if (this->Detach)
+        if (this->_on_detach)
         {
-            this->Detach();
+            this->_on_detach(connection);
         }
     }
 
 public:
-    Semaphore                   _sem;
-
-    OnCallBack                  Detach;
-    OnCallBack                  Ready;
-
+    OnDetach    _on_detach;
+    OnReady     _on_ready;
 };
 using RabbitMqEventHandlerPtr = std::shared_ptr<RabbitMqEventHandler>;
-
-enum class ChannelType
-{
-    Read = 0,
-    Write = 1
-};
-
-static std::string ToString(ChannelType type)
-{
-    if (type == ChannelType::Read)
-    {
-        return "Consumer";
-    }
-    else if (type == ChannelType::Write)
-    {
-        return "Publisher";
-    }
-    else
-    {
-        return "Unknown";
-    }
-}
 
 class RabbitChannel
 {
 public:
     RabbitChannel(const std::string &name)
     :
-    _name(name),
-    _type(ChannelType::Write)
+    _name(name)
     {
+        this->_started.store(false);
+        this->_restarting.store(false);
+        this->_restart_count.store(0);
     }
 
-    RabbitChannel(const std::string &name, const OnConsume &on_consume, int qos)
-    :
-    _qos(qos),
-    _name(name),
-    _on_consume(on_consume),
-    _type(ChannelType::Read)
-    {
-    }
-
-    ChannelType GetType()
-    {
-        return this->_type;
-    }
-
-    std::string Name()
-    {
-        return this->_name;
-    }
-
-    void Consume()
-    {
-        if (!this->_channel) return;
-
-        Semaphore sem;
-        this->_channel->consume("").
-        onReceived([this](
-            const AMQP::Message &message,
-            uint64_t delivery_tag,
-            bool redelivered)
-        {
-            try
-            {
-                //std::unique_lock<std::mutex> lock(this->_mutex);
-                auto data = std::string(message.body(), message.bodySize());
-                INFO("[%s] (%s) onReceived: [%llu]%s", this->_name.data(), ToString(this->_type).data(), delivery_tag, data.data());
-                if (this->_on_consume && this->_on_consume(data))
-                {
-                    if (this->_channel)
-                    {
-                        this->_channel->ack(delivery_tag);
-                    }
-                }
-            }
-            catch(std::exception &ex)
-            {
-                ERROR("[%s] %s", this->_name.data(), ToString(this->_type).data(), ex.what());
-            }
-        }).
-        onSuccess([this, &sem]()
-        {
-            INFO("[%s] (%s) onSuccess", this->_name.data(), ToString(this->_type).data());
-            sem.post();
-        }).
-        onError([this, &sem](const char* message)
-        {
-            ERROR("[%s] (%s) onError: %s", this->_name.data(), ToString(this->_type).data(), message);
-            sem.post();
-        });
-        sem.timed_wait(10000);
-    }
-
-    void Publish(const std::string &data, uint8_t priority)
-    {
-        std::unique_lock<std::mutex> lock(this->_mutex);
-        if (!this->_channel || !this->_reliable) return;
-
-        AMQP::Envelope envelope(data);
-        envelope.setPriority(priority);
-        envelope.setDeliveryMode(2);
-        this->_reliable->publish("", this->_name, envelope).
-        onAck([this, data]()
-        {
-            INFO("[%s] (%s) onAck: %s", this->_name.data(), ToString(this->_type).data(), data.data());
-        }).
-        onNack([this]()
-        {
-            INFO("[%s] (%s) onNack", this->_name.data(), ToString(this->_type).data());
-        }).
-        onLost([this]()
-        {
-            ERROR("[%s] (%s) onLost", this->_name.data(), ToString(this->_type).data());
-        }).
-        onError([this](const char* message)
-        {
-            ERROR("[%s] (%s) onError: %s", this->_name.data(), ToString(this->_type).data(), message);
-        });
-    }
-
-    void Start(const TcpConnectionPtr &connection)
-    {
-        if (!connection || !connection->ready()) 
-        {
-            ERROR("[%s] Connection not ready", this->_name.data());
-            return;
-        }
-
-        if (this->_channel)
-        {
-            this->_channel->close();
-        }
-
-        Semaphore channel_sem, queue_sem;
-        this->_channel = std::make_shared<AMQP::TcpChannel>(connection.get());
-        this->_channel->onReady([this, &channel_sem]()
-        {
-            INFO("[%s] (%s) Channel onReady", this->_name.data(), ToString(this->_type).data());
-            channel_sem.post();
-        });
-        this->_channel->onError([this, &channel_sem](const char* message)
-        {
-            ERROR("[%s] (%s) Channel onError: %s", this->_name.data(), ToString(this->_type).data(), message);
-            channel_sem.post();
-        });
-        this->_channel->declareQueue(this->_name, AMQP::durable).
-        onSuccess([this, &queue_sem](const std::string &name, int msgs, int consumers)
-        {
-            INFO("[%s] (%s) Queue onSuccess, [msgs: %d][consumers: %d]", this->_name.data(), ToString(this->_type).data(), msgs, consumers);
-            queue_sem.post();
-        });
-        channel_sem.timed_wait(10000);
-        queue_sem.timed_wait(10000);
-        if (this->_type == ChannelType::Write)
-        {
-            this->_reliable = std::make_shared<AMQP::Reliable<>>(*(this->_channel.get()));
-        }
-        else
-        {
-            this->_channel->setQos(this->_qos);
-            this->Consume();
-        }
-        INFO("[%s] (%s) Start", this->_name.data(), ToString(this->_type).data());
-    }
-private:
-    int             _qos;
-    std::string     _name;
-    OnConsume       _on_consume;
-    ChannelType     _type;
-    TcpChannelPtr   _channel;
-    ReliablePtr<>   _reliable;
-    std::mutex      _mutex;
-};
-using RabbitChannelPtr = std::shared_ptr<RabbitChannel>;
-
-class RabbitMq
-{
-public:
-    bool Start(const std::string &conn_str)
+    bool Consume(const OnConsume &on_consume, int qos)
     {
         try
         {
-            if (this->_started.exchange(true))
+            std::unique_lock<std::mutex> lock(this->_mutex);
+            this->_on_consume = on_consume;
+            this->_qos = qos;
+            if (!this->_channel)
             {
-                INFO("连接已经启动: %s", this->_connection_str.data());
-                return true;
+                ERROR("[%s] consume channel not connected", this->_name.data());
+                return false;
             }
-            INFO("连接启动开始: %s", this->_connection_str.data());
-            this->_connection_str = conn_str;
-            this->_loop = ev_loop_new(0);
-            this->_handler = std::make_shared<RabbitMqEventHandler>(this->_loop);
-            this->_handler->Detach = std::bind(&RabbitMq::Detach, this);
-            this->_handler->Ready = std::bind(&RabbitMq::Ready, this);
-            this->_connection = std::make_shared<AMQP::TcpConnection>(this->_handler.get(), AMQP::Address(this->_connection_str));
-            INFO("启动事件线程");
-            this->_loop_task = std::async(std::launch::async, [this]()
-            { 
-                INFO("事件监听开始");
-                ev_run(this->_loop, 0); 
-                INFO("事件监听结束");
+
+            this->_channel->setQos(this->_qos);
+            this->_channel->consume("").
+            onReceived([this](
+                const AMQP::Message &message,
+                uint64_t delivery_tag,
+                bool redelivered)
+            {
+                try
+                {
+                    std::unique_lock<std::mutex> lock(this->_mutex);
+                    auto data = std::string(message.body(), message.bodySize());
+                    //INFO("[%s] consume onReceived: [%llu]%s", this->_name.data(), delivery_tag, data.data());
+                    if (this->_on_consume && this->_on_consume(data))
+                    {
+                        if (this->_channel)
+                        {
+                            this->_channel->ack(delivery_tag);
+                            INFO("[%s] consume onReceived to ack: [%llu]%s", this->_name.data(), delivery_tag, data.data());
+                        }
+                    }
+                }
+                catch(std::exception &ex)
+                {
+                    ERROR("[%s] consume: %s", this->_name.data(), ex.what());
+                }
+            }).
+            onSuccess([this]()
+            {
+                INFO("[%s] consume onSuccess", this->_name.data());
+            }).
+            onError([this](const char* message)
+            {
+                ERROR("[%s] consume onError: %s", this->_name.data(), message);
             });
-            if (this->_restart_count.load() == 0)
-            {
-                this->_handler->Wait();
-            }
-            INFO("连接启动结束: %s", this->_connection_str.data());
             return true;
         }
         catch(std::exception &ex)
         {
-            ERROR(ex.what());
+            ERROR("[%s] consume exception: %s", this->_name.data(), ex.what());
+        }
+        return false;
+    }
+
+    bool Publish(const std::string &data, uint8_t priority)
+    {
+        try
+        {
+            std::unique_lock<std::mutex> lock(this->_mutex);
+            if (!this->_channel)
+            {
+                ERROR("[%s] publish channel not connected", this->_name.data());
+                return false;
+            }
+            if (!this->_reliable)
+            {
+                this->_reliable = std::make_shared<AMQP::Reliable<>>(*(this->_channel.get()));
+            }
+
+            //INFO("[%s] publish: %s", this->_name.data(), data.data());
+            AMQP::Envelope envelope(data);
+            envelope.setPriority(priority);
+            envelope.setDeliveryMode(2);
+            this->_reliable->publish("", this->_name, envelope).
+            onAck([this, data]()
+            {
+                INFO("[%s] publish onAck: %s", this->_name.data(), data.data());
+            }).
+            onNack([this]()
+            {
+                INFO("[%s] publish onNack", this->_name.data());
+            }).
+            onLost([this]()
+            {
+                ERROR("[%s] publish onLost", this->_name.data());
+            }).
+            onError([this](const char* message)
+            {
+                ERROR("[%s] publish onError: %s", this->_name.data(), message);
+            });
+            return true;
+        }
+        catch(std::exception &ex)
+        {
+            ERROR("[%s] publish exception: %s", this->_name.data(), ex.what());
+        }
+        return false;
+    }
+
+    bool Start(const std::string connection_str)
+    {
+        try
+        {
+            std::unique_lock<std::mutex> lock(this->_mutex);
+            if (this->_started.exchange(true))
+            {
+                INFO("[%s] already started", this->_name.data());
+                return true;
+            }
+            using namespace std::placeholders;
+            this->_connection_str = connection_str;
+            this->_loop = ev_loop_new(0);
+            this->_handler = std::make_shared<RabbitMqEventHandler>(
+                 this->_loop, 
+                 std::bind(&RabbitChannel::OnDetach, this, _1),
+                 std::bind(&RabbitChannel::OnReady, this, _1));
+            this->_connection = std::make_shared<AMQP::TcpConnection>(this->_handler.get(), AMQP::Address(this->_connection_str));
+            this->_channel = std::make_shared<AMQP::TcpChannel>(this->_connection.get());
+            this->_channel->onReady([this]()
+            {
+                INFO("[%s] Channel onReady", this->_name.data());
+            });
+            this->_channel->onError([this](const char* message)
+            {
+                ERROR("[%s] Channel onError: %s", this->_name.data(), message);
+            });
+            this->_channel->declareQueue(this->_name, AMQP::durable).
+            onSuccess([this](const std::string &name, int msgs, int consumers)
+            {
+                INFO("[%s] DeclareQueue onSuccess, [msgs: %d][consumers: %d]", this->_name.data(), msgs, consumers);
+            });
+            INFO("[%s] start loop task", this->_name.data());
+            this->_loop_task = std::async(std::launch::async, [this]()
+            { 
+                INFO("[%s] event start...", this->_name.data());
+                ev_run(this->_loop, 0); 
+                INFO("[%s] event exit...", this->_name.data());
+            });
+            INFO("[%s] start", this->_name.data());
+            return true;
+        }
+        catch(std::exception &ex)
+        {
+            ERROR("[%s] %s", this->_name.data(), ex.what());
         }
         return false;
     }
@@ -315,18 +250,22 @@ public:
     {
         try
         {
+            std::unique_lock<std::mutex> lock(this->_mutex);
             this->_started.store(false);
-            INFO("连接停止开始...");
-            if (!this->_connection->closed())
+            if (this->_channel && this->_channel->connected())
             {
-                INFO("连接未关闭，开始关闭...");
-                this->_connection->close(true);
-                INFO("连接关闭结束...");
+                this->_channel->close();
+                INFO("[%s] close channel", this->_name.data());
             }
-            INFO("连接停止结束...");
-            this->_handler = nullptr;
+            if (this->_connection && !this->_connection->closed())
+            {
+                this->_connection->close();
+                INFO("[%s] close connection", this->_name.data());
+            }
+            this->_reliable = nullptr;
+            this->_channel = nullptr;
             this->_connection = nullptr;
-            INFO("结束事件线程");
+            this->_handler = nullptr;
             ev_break(this->_loop, EVBREAK_ALL);
             this->_loop_task.wait();
             ev_loop_destroy(this->_loop);
@@ -334,20 +273,34 @@ public:
         }
         catch(std::exception &ex)
         {
-            ERROR(ex.what());
+            ERROR("[%s] %s", this->_name.data(), ex.what());
         }
         return false;
     }
 
-    bool Detach()
+    void OnReady(AMQP::TcpConnection* connection)
     {
+        INFO("[%s] connection ready", this->_name.data());
+        if (this->_restart_count.load() > 0 && this->_on_consume)
+        {
+            this->_on_ready_task = std::async(std::launch::async, [this]()
+            {
+                INFO("[%s] connection ready, restore consume", this->_name.data());
+                this->Consume(this->_on_consume, this->_qos);
+            });
+        }
+    }
+
+    void OnDetach(AMQP::TcpConnection* connection)
+    {
+        INFO("[%s] connection detach", this->_name.data());
         this->_on_detach_task = std::async(std::launch::async, [this]()
         {
             this->restart();
         });
-        return true;
     }
 
+private:
     bool restart()
     {
         try
@@ -357,137 +310,73 @@ public:
                 this->_reconnect_seconds.store(0);
             }
             this->_reconnect_seconds++;
-            INFO("开始重新连接, 等待[%d]秒后开始连接...", this->_reconnect_seconds.load());
+            INFO("[%s] wait [%d(s)] start reconnect...", this->_name.data(), this->_reconnect_seconds.load());
             if (this->_restarting.exchange(true)) return true;
             this->_restart_count++;
             std::this_thread::sleep_for(std::chrono::seconds(this->_reconnect_seconds.load()));
             if (!this->Stop()) 
             {
                 this->_restarting.store(false);
-                INFO("连接停止失败: [closed: %d][usable: %d][ready: %d]",
-                    this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
+                INFO("[%s] stop fail: [closed: %d][usable: %d][ready: %d]",
+                    this->_name.data(), this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
                 return false;
             }
 
             if (!this->Start(this->_connection_str))
             {
                 this->_restarting.store(false);
-                INFO("连接启动失败: [closed: %d][usable: %d][ready: %d]",
-                    this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
+                INFO("[%s] start fail : [closed: %d][usable: %d][ready: %d]",
+                    this->_name.data(), this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
                 return false;
             }
-            INFO("连接启动成功: [closed: %d][usable: %d][ready: %d]", 
-                 this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
+            INFO("[%s] start success: [closed: %d][usable: %d][ready: %d]", 
+                 this->_name.data(), this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
             this->_restarting.store(false);
-            INFO("重新连接结束, 重连次数[%lld]...", this->_restart_count.load());
+            INFO("[%s] reconnect finish, times[%lld]...", this->_name.data(), this->_restart_count.load());
             return true;
         }
         catch(std::exception &ex)
         {
-            ERROR("重连接异常: %s", ex.what());
+            ERROR("[%s] reconnect exception: %s", this->_name.data(), ex.what());
         }
         this->_restarting.store(false);
         return false;
     }
+private:
+    int                     _qos;
+    std::string             _name;
+    std::string             _connection_str;
+    std::mutex              _mutex;
+    std::future<void>       _on_detach_task;
+    std::future<void>       _on_ready_task;
+    std::future<void>       _loop_task;
+    std::atomic<int>        _reconnect_seconds;
+    std::atomic<bool>       _restarting;
+    std::atomic<bool>       _started;
+    std::atomic<int64_t>    _restart_count;
+    struct ev_loop*         _loop;
+    OnConsume               _on_consume;
+    TcpChannelPtr           _channel;
+    ReliablePtr<>           _reliable;
+    TcpConnectionPtr        _connection;
+    RabbitMqEventHandlerPtr _handler;
+};
+using RabbitChannelPtr = std::shared_ptr<RabbitChannel>;
 
-    bool Ready()
+class RabbitMq
+{
+public:
+    bool Start(const std::string &conn_str)
     {
-        this->_on_ready_task = std::async(std::launch::async, [this]()
-        {
-            this->restore_channel();
-        });
+        this->_connection_str = conn_str;
         return true;
     }
-    bool restore_channel()
-    {
-        try
-        {
-            if (this->_restart_count.load() == 0) return true;
-            INFO("通道恢复开始");
-            {
-                INFO("消费者恢复开始: [通道个数: %llu]", this->_read_channels.size());
-                std::shared_lock<std::shared_mutex> read_lock(this->_read_channel_mutex);
-                for (auto itr : this->_read_channels)
-                {
-                    INFO("消费者恢复开始: [队列名称: %s]", itr.first.data());
-                    itr.second->Start(this->_connection);
-                    INFO("消费者恢复结束: [队列名称: %s]", itr.first.data());
-                }
-                INFO("消费者恢复成功: [通道个数: %llu]", this->_read_channels.size());
-            }
-            {
-                INFO("生产者恢复开始: [通道个数: %llu]", this->_write_channels.size());
-                std::shared_lock<std::shared_mutex> read_lock(this->_write_channel_mutex);
-                for (auto itr : this->_write_channels)
-                {
-                    INFO("生产者恢复开始: [队列名称: %s]", itr.first.data());
-                    itr.second->Start(this->_connection);
-                    INFO("生产者恢复结束: [队列名称: %s]", itr.first.data());
-                }
-                INFO("生产者恢复成功: [通道个数: %llu]", this->_write_channels.size());
-            }
-            INFO("通道恢复结束");
-            return true;
-        }
-        catch(std::exception &ex)
-        {
-            ERROR("通道恢复异常: %s", ex.what());
-        }
-        return false;
-    }
 
-    void AddChannel(const RabbitChannelPtr &channel)
+    RabbitChannelPtr OpenChannel(const std::string &name)
     {
-        if (channel->GetType() == ChannelType::Read)
-        {
-            std::unique_lock<std::shared_mutex> write_lock(this->_read_channel_mutex);
-            this->_read_channels.insert({channel->Name(), channel});
-        }
-        else
-        {
-            std::unique_lock<std::shared_mutex> write_lock(this->_write_channel_mutex);
-            this->_write_channels.insert({channel->Name(), channel});
-        }
-    }
-
-    RabbitChannelPtr CreateReadChannel(const std::string &name, const OnConsume &on_consume, int qos)
-    {
-        std::unique_lock<std::mutex> lock(this->_connection_mutex);
-        if (!this->_connection) return nullptr;
-        auto channel = std::make_shared<RabbitChannel>(name, on_consume, qos);
-        channel->Start(this->_connection);
-        return channel;
-    }
-
-    RabbitChannelPtr CreateWriteChannel(const std::string &name)
-    {
-        std::unique_lock<std::mutex> lock(this->_connection_mutex);
-        if (!this->_connection) return nullptr;
         auto channel = std::make_shared<RabbitChannel>(name);
-        channel->Start(this->_connection);
+        channel->Start(this->_connection_str);
         return channel;
-    }
-
-    RabbitChannelPtr GetReadChannel(const std::string &name)
-    {
-        std::shared_lock<std::shared_mutex> read_lock(this->_read_channel_mutex);
-        auto itr = this->_read_channels.find(name);
-        if (itr == this->_read_channels.end())
-        {
-            return nullptr;
-        }
-        return itr->second;
-    }
-
-    RabbitChannelPtr GetWriteChannel(const std::string &name)
-    {
-        std::shared_lock<std::shared_mutex> read_lock(this->_write_channel_mutex);
-        auto itr = this->_write_channels.find(name);
-        if (itr == this->_write_channels.end())
-        {
-            return nullptr;
-        }
-        return itr->second;
     }
 
     static RabbitMq* Instance()
@@ -496,22 +385,7 @@ public:
         return &rabbitmq;
     }
 private:
-    struct ev_loop*                         _loop;
-    std::atomic<int>                        _reconnect_seconds;
-    std::atomic<bool>                       _started;
-    std::atomic<bool>                       _restarting;
-    std::atomic<int64_t>                    _restart_count;
-    std::string                             _connection_str;
-    std::mutex                              _connection_mutex;
-    std::shared_mutex                       _read_channel_mutex;
-    std::shared_mutex                       _write_channel_mutex;
-    std::future<void>                       _loop_task;
-    std::future<void>                       _on_detach_task;
-    std::future<void>                       _on_ready_task;
-    std::map<std::string, RabbitChannelPtr> _read_channels;
-    std::map<std::string, RabbitChannelPtr> _write_channels;
-    RabbitMqEventHandlerPtr                 _handler;
-    TcpConnectionPtr                        _connection;
+    std::string             _connection_str;
 };
 
 class RabbitQueue
@@ -523,60 +397,43 @@ public:
     {
     }
 
-    void Consume(const OnConsume &on_consume, int qos = 100)
+    bool Consume(const OnConsume &on_consume, int qos = 100)
     {
-        auto channel = this->get_read_channel(on_consume, qos);
-        if (!channel) return;
+        auto channel = this->get_channel();
+        if (!channel) return false;
 
-        //channel->Consume();
+        return channel->Consume(on_consume, qos);
     }
 
-    void Publish(const std::string &data, uint8_t priority = 0)
+    bool Publish(const std::string &data, uint8_t priority = 0)
     {
         try
         {
-            auto channel = this->get_write_channel();
-            if (!channel) return;
+            auto channel = this->get_channel();
+            if (!channel) return false;
 
-            channel->Publish(data, priority);
-            return;
+            return channel->Publish(data, priority);
         }
         catch(std::exception &ex)
         {
             ERROR("[%s] %s, 发送异常数据: %s", this->_name.data(), ex.what(), data.data());
         }
-        return;
+        return false;
     }
 
 private:
-    RabbitChannelPtr get_read_channel(const OnConsume &on_consume, int qos)
+    RabbitChannelPtr get_channel()
     {
-        std::unique_lock<std::mutex> lock(this->_read_mutex);
-        auto channel = RabbitMq::Instance()->GetReadChannel(this->_name);
-        if (!channel)
+        std::unique_lock<std::mutex> lock(this->_mutex);
+        if (!this->_channel)
         {
-            channel = RabbitMq::Instance()->CreateReadChannel(this->_name, on_consume, qos);
-            RabbitMq::Instance()->AddChannel(channel);
-            return channel;
+            this->_channel = RabbitMq::Instance()->OpenChannel(this->_name);
         }
-        return channel;
+        return this->_channel;
     }
 
-    RabbitChannelPtr get_write_channel()
-    {
-        std::unique_lock<std::mutex> lock(this->_write_mutex);
-        auto channel = RabbitMq::Instance()->GetWriteChannel(this->_name);
-        if (!channel)
-        {
-            channel = RabbitMq::Instance()->CreateWriteChannel(this->_name);
-            RabbitMq::Instance()->AddChannel(channel);
-            return channel;
-        }
-        return channel;
-
-    }
-    std::string _name;
-    std::mutex  _read_mutex;
-    std::mutex  _write_mutex;
+    std::string         _name;
+    std::mutex          _mutex;
+    RabbitChannelPtr    _channel;
 };
 }
