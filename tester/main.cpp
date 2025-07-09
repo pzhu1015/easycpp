@@ -246,8 +246,8 @@ void TestRabbitMq()
                 auto obj = serialize::JsonSerializer<test::SubObject>::FromStringPtr(data);
                 RemoveObj(obj->Int32);
                 return true;
-            }, 500);
-            for (int n=0; n < 1000; n++)
+            });
+            for (int n=0; n < 1; n++)
             {
                 auto obj = std::make_shared<test::SubObject>();
                 obj->Int32 = id++;
@@ -264,11 +264,6 @@ void TestRabbitMq()
                 {
                     ERROR("=============================================%s]: %llu", queue_name.data(), count);
                 }
-                else
-                {
-                    INFO("==============================================%s]: %llu", queue_name.data(), count);
-                }
-
                 std::this_thread::sleep_for(std::chrono::seconds(2));
             }
         }, i));

@@ -87,29 +87,30 @@ using RabbitMqEventHandlerPtr = std::shared_ptr<RabbitMqEventHandler>;
 class RabbitChannel
 {
 public:
-    RabbitChannel(const std::string &name)
+    RabbitChannel(const std::string &name, int qos = 100)
     :
-    _name(name)
+    _name(name),
+    _qos(qos)
     {
         this->_started.store(false);
         this->_restarting.store(false);
         this->_restart_count.store(0);
+        this->_reconnect_seconds.store(0);
     }
 
-    bool Consume(const OnConsume &on_consume, int qos)
+    bool Consume(const OnConsume &on_consume)
     {
         try
         {
             std::unique_lock<std::mutex> lock(this->_mutex);
             this->_on_consume = on_consume;
-            this->_qos = qos;
             if (!this->_channel)
             {
                 ERROR("[%s] consume channel not connected", this->_name.data());
                 return false;
             }
 
-            this->_channel->setQos(this->_qos);
+
             this->_channel->consume("").
             onReceived([this](
                 const AMQP::Message &message,
@@ -204,7 +205,7 @@ public:
             std::unique_lock<std::mutex> lock(this->_mutex);
             if (this->_started.exchange(true))
             {
-                INFO("[%s] already started", this->_name.data());
+                ERROR("[%s] already started", this->_name.data());
                 return true;
             }
             INFO("[%s] channel start", this->_name.data());
@@ -217,6 +218,7 @@ public:
                  std::bind(&RabbitChannel::OnReady, this, _1));
             this->_connection = std::make_shared<AMQP::TcpConnection>(this->_handler.get(), AMQP::Address(this->_connection_str));
             this->_channel = std::make_shared<AMQP::TcpChannel>(this->_connection.get());
+            this->_channel->setQos(this->_qos);
             this->_channel->onReady([this]()
             {
                 INFO("[%s] Channel onReady", this->_name.data());
@@ -268,6 +270,8 @@ public:
                 this->_connection->close();
                 INFO("[%s] close connection", this->_name.data());
             }
+            //this->_closed_connections.emplace_back(this->_connection);
+            this->_closed_handlers.emplace_back(this->_handler);
             this->_reliable = nullptr;
             this->_channel = nullptr;
             this->_connection = nullptr;
@@ -288,12 +292,21 @@ public:
     void OnReady(AMQP::TcpConnection* connection)
     {
         INFO("[%s] connection ready", this->_name.data());
+        if (this->_connection.get() != connection)
+        {
+            ERROR("[%s] connection ready, connection not match", this->_name.data());
+            return;
+        }
         if (this->_restart_count.load() > 0 && this->_on_consume)
         {
+            if (this->_on_ready_task.valid())
+            {
+                this->_on_ready_task.wait();
+            }
             this->_on_ready_task = std::async(std::launch::async, [this]()
             {
                 INFO("[%s] connection ready, restore consume", this->_name.data());
-                this->Consume(this->_on_consume, this->_qos);
+                this->Consume(this->_on_consume);
             });
         }
     }
@@ -301,9 +314,23 @@ public:
     void OnDetach(AMQP::TcpConnection* connection)
     {
         INFO("[%s] connection detach", this->_name.data());
+        if (this->_connection.get() != connection)
+        {
+            ERROR("[%s] connection detach, connection not match", this->_name.data());
+            return;
+        }
+        if (this->_restarting.exchange(true)) 
+        {
+            ERROR("[%s] already restaring", this->_name.data());
+            if (this->_on_detach_task.valid())
+            {
+                this->_on_detach_task.wait();
+            }
+        }
         this->_on_detach_task = std::async(std::launch::async, [this]()
         {
             this->restart();
+            this->_restarting.store(false);
         });
     }
 
@@ -312,33 +339,30 @@ private:
     {
         try
         {
-            if (this->_reconnect_seconds.load() == 5)
+            if (this->_reconnect_seconds.load() >= 5)
             {
                 this->_reconnect_seconds.store(0);
             }
             this->_reconnect_seconds++;
-            INFO("[%s] channel wait [%d(s)] restart...", this->_name.data(), this->_reconnect_seconds.load());
-            if (this->_restarting.exchange(true)) return true;
             this->_restart_count++;
+            INFO("[%s] channel wait [%d(s)] restart...", this->_name.data(), this->_reconnect_seconds.load());
             std::this_thread::sleep_for(std::chrono::seconds(this->_reconnect_seconds.load()));
             if (!this->Stop()) 
             {
-                this->_restarting.store(false);
                 INFO("[%s] channel stop fail: [closed: %d][usable: %d][ready: %d]",
                     this->_name.data(), this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
                 return false;
             }
+            INFO("[%s] channel stop success", this->_name.data());
 
             if (!this->Start(this->_connection_str))
             {
-                this->_restarting.store(false);
                 INFO("[%s] channel start fail : [closed: %d][usable: %d][ready: %d]",
                     this->_name.data(), this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
                 return false;
             }
             INFO("[%s] channel start success: [closed: %d][usable: %d][ready: %d]", 
                  this->_name.data(), this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
-            this->_restarting.store(false);
             INFO("[%s] channel restarted, try [%lld] times...", this->_name.data(), this->_restart_count.load());
             return true;
         }
@@ -346,7 +370,6 @@ private:
         {
             ERROR("[%s] reconnect exception: %s", this->_name.data(), ex.what());
         }
-        this->_restarting.store(false);
         return false;
     }
 private:
@@ -367,6 +390,8 @@ private:
     ReliablePtr<>           _reliable;
     TcpConnectionPtr        _connection;
     RabbitMqEventHandlerPtr _handler;
+    std::vector<TcpConnectionPtr> _closed_connections;
+    std::vector<RabbitMqEventHandlerPtr> _closed_handlers;
 };
 using RabbitChannelPtr = std::shared_ptr<RabbitChannel>;
 
@@ -380,9 +405,9 @@ public:
         return true;
     }
 
-    RabbitChannelPtr OpenChannel(const std::string &name)
+    RabbitChannelPtr OpenChannel(const std::string &name, int qos)
     {
-        auto channel = std::make_shared<RabbitChannel>(name);
+        auto channel = std::make_shared<RabbitChannel>(name, qos);
         channel->Start(this->_connection_str);
         return channel;
     }
@@ -399,18 +424,19 @@ private:
 class RabbitQueue
 {
 public:
-    RabbitQueue(const std::string &name)
+    RabbitQueue(const std::string &name, int qos = 100)
     :
-    _name(name)
+    _name(name),
+    _qos(qos)
     {
     }
 
-    bool Consume(const OnConsume &on_consume, int qos = 100)
+    bool Consume(const OnConsume &on_consume)
     {
         auto channel = this->get_channel();
         if (!channel) return false;
 
-        return channel->Consume(on_consume, qos);
+        return channel->Consume(on_consume);
     }
 
     bool Publish(const std::string &data, uint8_t priority = 0)
@@ -435,11 +461,12 @@ private:
         std::unique_lock<std::mutex> lock(this->_mutex);
         if (!this->_channel)
         {
-            this->_channel = RabbitMq::Instance()->OpenChannel(this->_name);
+            this->_channel = RabbitMq::Instance()->OpenChannel(this->_name, this->_qos);
         }
         return this->_channel;
     }
 
+    int                 _qos;
     std::string         _name;
     std::mutex          _mutex;
     RabbitChannelPtr    _channel;
