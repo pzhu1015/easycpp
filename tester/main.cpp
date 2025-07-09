@@ -1,6 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include <inja/inja.hpp>
+#include <shared_mutex>
 #include "obj.h"
 #include "json.h"
 #include "templates.h"
@@ -251,9 +252,9 @@ void TestRabbitMq()
                 auto obj = std::make_shared<test::SubObject>();
                 obj->Int32 = id++;
                 obj->String = "测试队列";
-                q->Publish(serialize::JsonSerializer<test::SubObject>::ToString(obj).data());
-                AddObj(obj->Int32);
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                auto result = q->Publish(serialize::JsonSerializer<test::SubObject>::ToString(obj).data());
+                if (result) AddObj(obj->Int32);
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
 
             while(1)

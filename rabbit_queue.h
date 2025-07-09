@@ -207,6 +207,7 @@ public:
                 INFO("[%s] already started", this->_name.data());
                 return true;
             }
+            INFO("[%s] channel start", this->_name.data());
             using namespace std::placeholders;
             this->_connection_str = connection_str;
             this->_loop = ev_loop_new(0);
@@ -228,15 +229,19 @@ public:
             onSuccess([this](const std::string &name, int msgs, int consumers)
             {
                 INFO("[%s] DeclareQueue onSuccess, [msgs: %d][consumers: %d]", this->_name.data(), msgs, consumers);
+            }).
+            onError([this](const char* message)
+            {
+                ERROR("[%s] DeclareQueue onError: %s", this->_name.data(), message);
             });
-            INFO("[%s] start loop task", this->_name.data());
+            INFO("[%s] channel start event loop task", this->_name.data());
             this->_loop_task = std::async(std::launch::async, [this]()
             { 
                 INFO("[%s] event start...", this->_name.data());
                 ev_run(this->_loop, 0); 
                 INFO("[%s] event exit...", this->_name.data());
             });
-            INFO("[%s] start", this->_name.data());
+            INFO("[%s] channel started", this->_name.data());
             return true;
         }
         catch(std::exception &ex)
@@ -251,6 +256,7 @@ public:
         try
         {
             std::unique_lock<std::mutex> lock(this->_mutex);
+            INFO("[%s] channel stop", this->_name.data());
             this->_started.store(false);
             if (this->_channel && this->_channel->connected())
             {
@@ -269,6 +275,7 @@ public:
             ev_break(this->_loop, EVBREAK_ALL);
             this->_loop_task.wait();
             ev_loop_destroy(this->_loop);
+            INFO("[%s] channel stopped", this->_name.data());
             return true;
         }
         catch(std::exception &ex)
@@ -310,14 +317,14 @@ private:
                 this->_reconnect_seconds.store(0);
             }
             this->_reconnect_seconds++;
-            INFO("[%s] wait [%d(s)] start reconnect...", this->_name.data(), this->_reconnect_seconds.load());
+            INFO("[%s] channel wait [%d(s)] restart...", this->_name.data(), this->_reconnect_seconds.load());
             if (this->_restarting.exchange(true)) return true;
             this->_restart_count++;
             std::this_thread::sleep_for(std::chrono::seconds(this->_reconnect_seconds.load()));
             if (!this->Stop()) 
             {
                 this->_restarting.store(false);
-                INFO("[%s] stop fail: [closed: %d][usable: %d][ready: %d]",
+                INFO("[%s] channel stop fail: [closed: %d][usable: %d][ready: %d]",
                     this->_name.data(), this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
                 return false;
             }
@@ -325,14 +332,14 @@ private:
             if (!this->Start(this->_connection_str))
             {
                 this->_restarting.store(false);
-                INFO("[%s] start fail : [closed: %d][usable: %d][ready: %d]",
+                INFO("[%s] channel start fail : [closed: %d][usable: %d][ready: %d]",
                     this->_name.data(), this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
                 return false;
             }
-            INFO("[%s] start success: [closed: %d][usable: %d][ready: %d]", 
+            INFO("[%s] channel start success: [closed: %d][usable: %d][ready: %d]", 
                  this->_name.data(), this->_connection->closed(), this->_connection->usable(), this->_connection->ready());
             this->_restarting.store(false);
-            INFO("[%s] reconnect finish, times[%lld]...", this->_name.data(), this->_restart_count.load());
+            INFO("[%s] channel restarted, try [%lld] times...", this->_name.data(), this->_restart_count.load());
             return true;
         }
         catch(std::exception &ex)
@@ -369,6 +376,7 @@ public:
     bool Start(const std::string &conn_str)
     {
         this->_connection_str = conn_str;
+        INFO("started: %s", this->_connection_str.data());
         return true;
     }
 
