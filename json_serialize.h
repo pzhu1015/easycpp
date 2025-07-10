@@ -8,15 +8,6 @@
 #include <nlohmann/json.hpp>
 #include "reflection.h"
 
-#ifdef EASYCPP_LOGGING
-#include "logger.h"
-#else
-#define DEBUG(...)  ((void)0)
-#define INFO(...) ((void)0)
-#define WARNING(...) ((void)0)
-#define ERROR(...) ((void)0)
-#endif
-
 #define JSON_SERIALIZE_PTR(name, nick) ::serialize::JsonSerialize::Serialize(entity->name, nick, json);
 #define JSON_DESERIALIZE_PTR(name, nick) ::serialize::JsonSerialize::DeSerialize(entity->name, nick, json); 
 

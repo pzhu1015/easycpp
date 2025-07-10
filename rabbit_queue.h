@@ -18,19 +18,18 @@
 #define ERROR(...) ((void)0)
 #endif
 
-using OnDetach = std::function<void(AMQP::TcpConnection*)>;
-using OnReady = std::function<void(AMQP::TcpConnection*)>;
-using OnConsume = std::function<bool(const std::string &data)>;
+namespace queue
+{
 using TcpChannelPtr = std::shared_ptr<AMQP::TcpChannel>;
 using TcpConnectionPtr = std::shared_ptr<AMQP::TcpConnection>;
 template <typename BASE=AMQP::Tagger>
 using ReliablePtr = std::shared_ptr<AMQP::Reliable<BASE>>;
 
-namespace queue
-{
 class RabbitMqEventHandler : public AMQP::LibEvHandler
 {
 public:
+    using OnDetach = std::function<void(AMQP::TcpConnection*)>;
+    using OnReady = std::function<void(AMQP::TcpConnection*)>;
     RabbitMqEventHandler(
         struct ev_loop *loop, 
         const OnDetach &on_deatch,
@@ -83,10 +82,12 @@ public:
     OnReady     _on_ready;
 };
 using RabbitMqEventHandlerPtr = std::shared_ptr<RabbitMqEventHandler>;
+using OnConsume = std::function<bool(const std::string &data)>;
 
 class RabbitChannel
 {
 public:
+
     RabbitChannel(const std::string &name, int qos = 100)
     :
     _name(name),
@@ -270,7 +271,6 @@ public:
                 this->_connection->close();
                 INFO("[%s] close connection", this->_name.data());
             }
-            //this->_closed_connections.emplace_back(this->_connection);
             this->_closed_handlers.emplace_back(this->_handler);
             this->_reliable = nullptr;
             this->_channel = nullptr;

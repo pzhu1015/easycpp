@@ -11,15 +11,6 @@
 #include <mysql/mysql.h>
 #endif
 
-#ifdef EASYCPP_LOGGING
-#include <logger.h>
-#else
-#define DEBUG(...)  ((void)0)
-#define INFO(...) ((void)0)
-#define WARNING(...) ((void)0)
-#define ERROR(...) ((void)0)
-#endif
-
 namespace datetime
 {
 class DateTime {
