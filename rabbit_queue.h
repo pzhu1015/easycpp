@@ -271,7 +271,6 @@ public:
                 this->_connection->close();
                 INFO("[%s] close connection", this->_name.data());
             }
-            this->_closed_handlers.emplace_back(this->_handler);
             this->_reliable = nullptr;
             this->_channel = nullptr;
             this->_connection = nullptr;
@@ -390,8 +389,6 @@ private:
     ReliablePtr<>           _reliable;
     TcpConnectionPtr        _connection;
     RabbitMqEventHandlerPtr _handler;
-    std::vector<TcpConnectionPtr> _closed_connections;
-    std::vector<RabbitMqEventHandlerPtr> _closed_handlers;
 };
 using RabbitChannelPtr = std::shared_ptr<RabbitChannel>;
 
