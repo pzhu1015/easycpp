@@ -18,13 +18,9 @@ enum class LogLevel {
 
 // 日志配置
 struct LogConfig {
-    static LogLevel min_level;  // 最小日志级别
-    static std::mutex mutex;
+    inline static LogLevel min_level;  // 最小日志级别
+    inline static std::mutex mutex;
 };
-
-// 初始化配置默认值
-LogLevel LogConfig::min_level = LogLevel::DEBUG;
-std::mutex LogConfig::mutex;
 
 // ANSI 颜色代码
 constexpr const char* COLOR_DEBUG = "\033[36m";   // 青色

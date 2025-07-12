@@ -8,6 +8,15 @@
 #include <nlohmann/json.hpp>
 #include "reflection.h"
 
+#ifdef EASYCPP_LOGGING
+#include "logger.h"
+#else
+#define DEBUG(...)  ((void)0)
+#define INFO(...) ((void)0)
+#define WARNING(...) ((void)0)
+#define ERROR(...) ((void)0)
+#endif
+
 #define JSON_SERIALIZE_PTR(name, nick) ::serialize::JsonSerialize::Serialize(entity->name, nick, json);
 #define JSON_DESERIALIZE_PTR(name, nick) ::serialize::JsonSerialize::DeSerialize(entity->name, nick, json); 
 
@@ -236,6 +245,60 @@ public:
         return {};
     }
 };
+
+template<class T>
+class JsonSerializer<std::vector<T>>
+{
+public:
+    static std::string ToString(const std::vector<T> &entity)
+    {
+        auto array = Json::array();
+        for (const auto &v : entity)
+        {
+            array.emplace_back(JsonSerializer<T>::ToJson(v));
+        }
+        return array.dump(4);
+    }
+
+    static Json ToJson(const std::vector<T> &entity) 
+    {
+        auto array = Json::array();
+        for (const auto &v : entity)
+        {
+            array.emplace_back(JsonSerializer<T>::ToJson(v));
+        }
+        return array;
+    }
+
+    static std::vector<T> FromString(const std::string &str)
+    {
+        std::vector<T> value;
+        auto json = Json::parse(str);
+        if (!json.is_null() && json.is_array())
+        {
+            for (const auto &item : json)
+            {
+                value.emplace_back(JsonSerializer<T>::FromJson(item));
+            }
+        }
+        return value;
+    }
+
+    static std::vector<T> FromJson(const Json &json)
+    {
+        std::vector<T> value;
+        if (!json.is_null() && json.is_array())
+        {
+            for (const auto &item : json)
+            {
+                value.emplace_back(JsonSerializer<T>::FromJson(item));
+            }
+            return value;
+        }
+        return value;
+    }
+};
+
 
 template<class T>
 class JsonSerializer<std::vector<std::shared_ptr<T>>>
