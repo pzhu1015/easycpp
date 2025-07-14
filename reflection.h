@@ -1,6 +1,8 @@
 #pragma once
 #include <memory>
 #include <type_traits>
+#include <typeinfo>
+#include <cxxabi.h>
 
 //判断参数是否空
 #define EMPTY(...)
@@ -176,3 +178,12 @@ struct is_shared_ptr : std::false_type{};
 
 template<typename U>
 struct is_shared_ptr<std::shared_ptr<U>> : std::true_type {};
+
+template <typename T>
+std::string type_name() {
+    int status = 0;
+    std::unique_ptr<char, void(*)(void*)> demangled(
+        abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status),
+        std::free);
+    return (status == 0) ? demangled.get() : typeid(T).name();
+}

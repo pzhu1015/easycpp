@@ -81,7 +81,7 @@ void TestJsonSerialize()
     t.SetUInt64 = {0, 16000000000};
 
 
-    auto json = serialize::JsonSerializer<test::Object>::ToString(t);
+    auto json = serialize::JsonSerializer<test::Object>::ToString(t, 4);
     std::cout << "json =  " << json << std::endl;
     std::cout << "======================================================" << std::endl;
 
@@ -307,10 +307,10 @@ void TestPhoneData()
 int main()
 {
     INFO("测试开始");
-    TestPhoneData();
+    //TestPhoneData();
     //TestRabbitMq();
     //TestDateTime();
-    //TestJsonSerialize();
+    TestJsonSerialize();
     //TestParamSerialize();
     //std::cout << XmlDirectory << std::endl;
     //TestTemplateSerialize();

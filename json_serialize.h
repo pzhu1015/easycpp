@@ -78,17 +78,25 @@ namespace serialize \
 	class JsonSerializer<T>\
 	{\
 	public:\
-		static std::string ToString(const std::shared_ptr<T> &entity) \
+		static std::string ToString(const std::shared_ptr<T> &entity, int tab = 0) \
 		{\
             auto json = nlohmann::json::object();\
             FOREACH(JSON_SERIALIZE_ITEM_PTR, __VA_ARGS__);\
-            return json.dump(4);\
+            if (tab == 0)\
+            {\
+                return json.dump();\
+            }\
+            return json.dump(tab);\
         }\
-		static std::string ToString(const T &entity) \
+		static std::string ToString(const T &entity, int tab = 0) \
 		{\
             auto json = nlohmann::json::object();\
             FOREACH(JSON_SERIALIZE_ITEM, __VA_ARGS__);\
-            return json.dump(4);\
+            if (tab == 0)\
+            {\
+                return json.dump();\
+            }\
+            return json.dump(tab);\
 		}\
         static ::serialize::Json ToJson(const std::shared_ptr<T> &entity) \
 		{\
@@ -138,11 +146,11 @@ template<class T>
 class JsonSerializer
 {
 public:
-    static std::string ToString(const std::shared_ptr<T> &entity) 
+    static std::string ToString(const std::shared_ptr<T> &entity, int tab = 0) 
     {
         return "";
     }
-	static std::string ToString(const T &entity) 
+	static std::string ToString(const T &entity, int tab = 0) 
     {
         return std::string();
     }
@@ -180,10 +188,14 @@ template<>
 class JsonSerializer<std::set<std::string>>
 {
 public:
-    static std::string ToString(const std::set<std::string> &entity)
+    static std::string ToString(const std::set<std::string> &entity, int tab = 0)
     {
         Json json = entity;
-        return json.dump(4);
+        if (tab == 0)
+        {
+            return json.dump();
+        }
+        return json.dump(tab);
     }
 
     static Json ToJson(const std::set<std::string> &entity) 
@@ -215,10 +227,14 @@ template<>
 class JsonSerializer<std::vector<std::string>>
 {
 public:
-    static std::string ToString(const std::vector<std::string> &entity)
+    static std::string ToString(const std::vector<std::string> &entity, int tab = 0)
     {
         Json json = entity;
-        return json.dump(4);
+        if (tab == 0)
+        {
+            return json.dump();
+        }
+        return json.dump(tab);
     }
 
     static Json ToJson(const std::vector<std::string> &entity) 
@@ -250,14 +266,18 @@ template<class T>
 class JsonSerializer<std::vector<T>>
 {
 public:
-    static std::string ToString(const std::vector<T> &entity)
+    static std::string ToString(const std::vector<T> &entity, int tab = 0)
     {
         auto array = Json::array();
         for (const auto &v : entity)
         {
             array.emplace_back(JsonSerializer<T>::ToJson(v));
         }
-        return array.dump(4);
+        if (tab == 0)
+        {
+            return array.dump();
+        }
+        return array.dump(tab);
     }
 
     static Json ToJson(const std::vector<T> &entity) 
@@ -304,14 +324,18 @@ template<class T>
 class JsonSerializer<std::vector<std::shared_ptr<T>>>
 {
 public:
-    static std::string ToString(const std::vector<std::shared_ptr<T>> &entity)
+    static std::string ToString(const std::vector<std::shared_ptr<T>> &entity, int tab = 0)
     {
         auto array = Json::array();
         for (const auto &v : entity)
         {
             array.emplace_back(JsonSerializer<T>::ToJson(v));
         }
-        return array.dump(4);
+        if (tab == 0)
+        {
+            return array.dump();
+        }
+        return array.dump(tab);
     }
 
     static Json ToJson(const std::vector<std::shared_ptr<T>> &entity) 
@@ -358,10 +382,14 @@ template<>
 class JsonSerializer<std::list<std::string>>
 {
 public:
-    static std::string ToString(const std::list<std::string> &entity)
+    static std::string ToString(const std::list<std::string> &entity, int tab = 0)
     {
         Json json = entity;
-        return json.dump(4);
+        if (tab == 0)
+        {
+            return json.dump();
+        }
+        return json.dump(tab);
     }
 
     static Json ToJson(const std::list<std::string> &entity) 
@@ -394,93 +422,29 @@ class JsonSerialize
 public:
     static void Serialize(const std::string &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.is_null() && json.is_object())
+        {
+            json[name] = value;
+        }
+    }
+    
+    template<typename T>
+    typename std::enable_if<std::is_integral<T>::value, void>::type
+    static Serialize(T value, const std::string &name, Json &json)
+    {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = value;
         }
     }
 
-    static void Serialize(bool value, const std::string &name, Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_floating_point<T>::value, void>::type
+    static Serialize(T value, const std::string &name, Json &json)
     {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-    static void Serialize(float value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(double value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(int8_t value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(int16_t value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(int32_t value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(int64_t value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(uint8_t value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(uint16_t value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(uint32_t value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(uint64_t value, const std::string &name, Json &json)
-    {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = value;
@@ -491,6 +455,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static Serialize(const std::shared_ptr<T> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (value != nullptr && !json.is_null() && json.is_object())
         {
             json[name] = JsonSerializer<T>::ToJson(value);
@@ -502,6 +467,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static Serialize(const T &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = JsonSerializer<T>::ToJson(value);
@@ -513,6 +479,7 @@ public:
     typename std::enable_if<std::is_enum<T>::value, void>::type
     static Serialize(const T &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = value;
@@ -521,86 +488,29 @@ public:
 
     static void Serialize(const std::vector<std::string> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = value;
         }
     }
 
-    static void Serialize(const std::vector<float> &value, const std::string &name, Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_integral<T>::value, void>::type
+    static Serialize(const std::vector<T> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = value;
         }
     }
 
-    static void Serialize(const std::vector<double> &value, const std::string &name, Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_floating_point<T>::value, void>::type
+    static Serialize(const std::vector<T> &value, const std::string &name, Json &json)
     {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::vector<int8_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::vector<int16_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::vector<int32_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::vector<int64_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::vector<uint8_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::vector<uint16_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::vector<uint32_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::vector<uint64_t> &value, const std::string &name, Json &json)
-    {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = value;
@@ -611,6 +521,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static Serialize(const std::vector<std::shared_ptr<T>> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             auto array = nlohmann::json::array();
@@ -626,6 +537,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static Serialize(const std::vector<T> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             auto array = nlohmann::json::array();
@@ -639,97 +551,40 @@ public:
 
     static void Serialize(const std::list<std::string> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = value;
         }
     }
 
-    static void Serialize(const std::list<float> &value, const std::string &name, Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_integral<T>::value, void>::type
+    static Serialize(const std::list<T> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = value;
         }
     }
 
-    static void Serialize(const std::list<double> &value, const std::string &name, Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_floating_point<T>::value, void>::type
+    static Serialize(const std::list<T> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = value;
         }
     }
-
-    static void Serialize(const std::list<int8_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::list<int16_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::list<int32_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::list<int64_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::list<uint8_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::list<uint16_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::list<uint32_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::list<uint64_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
 
     template<typename T>
     typename std::enable_if<std::is_class<T>::value, void>::type
     static Serialize(const std::list<std::shared_ptr<T>> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             auto array = nlohmann::json::array();
@@ -745,6 +600,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static Serialize(const std::list<T> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             auto array = nlohmann::json::array();
@@ -758,86 +614,29 @@ public:
 
     static void Serialize(const std::set<std::string> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = value;
         }
     }
 
-    static void Serialize(const std::set<float> &value, const std::string &name, Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_integral<T>::value, void>::type
+    static Serialize(const std::set<T> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = value;
         }
     }
 
-    static void Serialize(const std::set<double> &value, const std::string &name, Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_floating_point<T>::value, void>::type
+    static Serialize(const std::set<T> &value, const std::string &name, Json &json)
     {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::set<int8_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::set<int16_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::set<int32_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::set<int64_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::set<uint8_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::set<uint16_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::set<uint32_t> &value, const std::string &name, Json &json)
-    {
-        if (!json.is_null() && json.is_object())
-        {
-            json[name] = value;
-        }
-    }
-
-    static void Serialize(const std::set<uint64_t> &value, const std::string &name, Json &json)
-    {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             json[name] = value;
@@ -848,6 +647,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static Serialize(const std::set<std::shared_ptr<T>> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             auto array = nlohmann::json::array();
@@ -863,6 +663,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static Serialize(const std::set<T> &value, const std::string &name, Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         if (!json.is_null() && json.is_object())
         {
             auto array = nlohmann::json::array();
@@ -876,6 +677,7 @@ public:
 
     static void DeSerialize(std::string &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_string())
         {
@@ -883,102 +685,27 @@ public:
         }
     }
 
-    static void DeSerialize(bool &value, const std::string &name, const Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_integral<T>::value, void>::type
+    static DeSerialize(T &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
-        if (!v.is_null() && v.is_boolean())
+        if (!v.is_null() && (v.is_boolean() || v.is_number()))
         {
-            value = v.get<bool>();
+            value = v.get<T>();
         }
     }
 
-    static void DeSerialize(float &value, const std::string &name, const Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_floating_point<T>::value, void>::type
+    static DeSerialize(T &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_number())
         {
-            value = v.get<float>();
-        }
-    }
-
-    static void DeSerialize(double &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_number())
-        {
-            value = v.get<double>();
-        }
-    }
-
-    static void DeSerialize(int8_t &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_number())
-        {
-            value = v.get<int8_t>();
-        }
-    }
-
-    static void DeSerialize(int16_t &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_number())
-        {
-            value = v.get<int16_t>();
-        }
-    }
-
-    static void DeSerialize(int32_t &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_number())
-        {
-            value = v.get<int32_t>();
-        }
-    }
-
-    static void DeSerialize(int64_t &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_number())
-        {
-            value = v.get<int64_t>();
-        }
-    }
-
-    static void DeSerialize(uint8_t &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_number())
-        {
-            value = v.get<uint8_t>();
-        }
-    }
-
-    static void DeSerialize(uint16_t &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_number())
-        {
-            value = v.get<uint16_t>();
-        }
-    }
-
-    static void DeSerialize(uint32_t &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_number())
-        {
-            value = v.get<uint32_t>();
-        }
-    }
-
-    static void DeSerialize(uint64_t &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_number())
-        {
-            value = v.get<uint64_t>();
+            value = v.get<T>();
         }
     }
 
@@ -987,6 +714,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static DeSerialize(std::shared_ptr<T> &value, const std::string &name, const Json &json) 
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_object())
         {
@@ -999,6 +727,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static DeSerialize(T &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && (v.is_object() || v.is_string()))
         {
@@ -1011,6 +740,7 @@ public:
     typename std::enable_if<std::is_enum<T>::value, void>::type
     static DeSerialize(T &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_number())
         {
@@ -1020,6 +750,7 @@ public:
 
     static void DeSerialize(std::vector<std::string> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -1027,93 +758,27 @@ public:
         }
     }
     
-    static void DeSerialize(std::vector<float> &value, const std::string &name, const Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_integral<T>::value, void>::type
+    static DeSerialize(std::vector<T> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
-            value = v.get<std::vector<float>>();
+            value = v.get<std::vector<T>>();
         }
     }
 
-    static void DeSerialize(std::vector<double> &value, const std::string &name, const Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_floating_point<T>::value, void>::type
+    static DeSerialize(std::vector<T> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
-            value = v.get<std::vector<double>>();
-        }
-    }
-
-    static void DeSerialize(std::vector<int8_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::vector<int8_t>>();
-        }
-    }
-
-    static void DeSerialize(std::vector<int16_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::vector<int16_t>>();
-        }
-    }
-
-    static void DeSerialize(std::vector<int32_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::vector<int32_t>>();
-        }
-    }
-
-    static void DeSerialize(std::vector<int64_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::vector<int64_t>>();
-        }
-    }
-
-    static void DeSerialize(std::vector<uint8_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::vector<uint8_t>>();
-        }
-    }
-
-    static void DeSerialize(std::vector<uint16_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::vector<uint16_t>>();
-        }
-    }
-
-    static void DeSerialize(std::vector<uint32_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::vector<uint32_t>>();
-        }
-    }
-
-    static void DeSerialize(std::vector<uint64_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::vector<uint64_t>>();
+            value = v.get<std::vector<T>>();
         }
     }
 
@@ -1121,6 +786,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static DeSerialize(std::vector<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -1135,6 +801,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static DeSerialize(std::vector<T> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -1147,6 +814,7 @@ public:
 
     static void DeSerialize(std::list<std::string> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -1154,93 +822,27 @@ public:
         }
     }
 
-    static void DeSerialize(std::list<float> &value, const std::string &name, const Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_integral<T>::value, void>::type
+    static DeSerialize(std::list<T> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
-            value = v.get<std::list<float>>();
+            value = v.get<std::list<T>>();
         }
     }
 
-    static void DeSerialize(std::list<double> &value, const std::string &name, const Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_floating_point<T>::value, void>::type
+    static DeSerialize(std::list<T> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
-            value = v.get<std::list<double>>();
-        }
-    }
-
-    static void DeSerialize(std::list<int8_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::list<int8_t>>();
-        }
-    }
-
-    static void DeSerialize(std::list<int16_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::list<int16_t>>();
-        }
-    }
-
-    static void DeSerialize(std::list<int32_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::list<int32_t>>();
-        }
-    }
-
-    static void DeSerialize(std::list<int64_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::list<int64_t>>();
-        }
-    }
-
-    static void DeSerialize(std::list<uint8_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::list<uint8_t>>();
-        }
-    }
-
-    static void DeSerialize(std::list<uint16_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::list<uint16_t>>();
-        }
-    }
-
-    static void DeSerialize(std::list<uint32_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::list<uint32_t>>();
-        }
-    }
-
-    static void DeSerialize(std::list<uint64_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::list<uint64_t>>();
+            value = v.get<std::list<T>>();
         }
     }
 
@@ -1248,6 +850,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static DeSerialize(std::list<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -1262,6 +865,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static DeSerialize(std::list<T> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -1274,6 +878,7 @@ public:
 
     static void DeSerialize(std::set<std::string> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -1281,93 +886,27 @@ public:
         }
     }
 
-    static void DeSerialize(std::set<float> &value, const std::string &name, const Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_integral<T>::value, void>::type
+    static DeSerialize(std::set<T> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
-            value = v.get<std::set<float>>();
+            value = v.get<std::set<T>>();
         }
     }
 
-    static void DeSerialize(std::set<double> &value, const std::string &name, const Json &json)
+    template<typename T>
+    typename std::enable_if<std::is_floating_point<T>::value, void>::type
+    static DeSerialize(std::set<T> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
-            value = v.get<std::set<double>>();
-        }
-    }
-
-    static void DeSerialize(std::set<int8_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::set<int8_t>>();
-        }
-    }
-
-    static void DeSerialize(std::set<int16_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::set<int16_t>>();
-        }
-    }
-
-    static void DeSerialize(std::set<int32_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::set<int32_t>>();
-        }
-    }
-
-    static void DeSerialize(std::set<int64_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::set<int64_t>>();
-        }
-    }
-
-    static void DeSerialize(std::set<uint8_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::set<uint8_t>>();
-        }
-    }
-
-    static void DeSerialize(std::set<uint16_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::set<uint16_t>>();
-        }
-    }
-
-    static void DeSerialize(std::set<uint32_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::set<uint32_t>>();
-        }
-    }
-
-    static void DeSerialize(std::set<uint64_t> &value, const std::string &name, const Json &json)
-    {
-        const Json &v = json[name];
-        if (!v.is_null() && v.is_array())
-        {
-            value = v.get<std::set<uint64_t>>();
+            value = v.get<std::set<T>>();
         }
     }
 
@@ -1375,6 +914,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static DeSerialize(std::set<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -1389,6 +929,7 @@ public:
     typename std::enable_if<std::is_class<T>::value, void>::type
     static DeSerialize(std::set<T> &value, const std::string &name, const Json &json)
     {
+        INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
