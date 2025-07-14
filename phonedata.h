@@ -5,11 +5,20 @@
 #include <stdexcept>
 #include <algorithm>
 #include <memory>
-#include <zlib.h>
-#include "phone.h"
 
+#ifdef PHONEDATA_GZIP
+//*. yum install zlib-devel
 //*. tar -czvf phone.dat phone.dat.gz
-//*. generate phone.h: xxd -i phone.dat.gz > phone.h
+//*. xxd -i phone.dat.gz > phone_gz.h
+#include <zlib.h>
+#include "phone_gz.h"
+#else
+//*. yum install xz-devel
+//*. xz -9 phone.dat
+//*. xxd -i phone.dat.xz > phone_xz.h
+#include <lzma.h>
+#include "phone_xz.h"
+#endif
 
 #ifdef EASYCPP_LOGGING
 #include "logger.h"
@@ -84,7 +93,13 @@ public:
     {
         try
         {
-            this->_data = decompress_gzip(phone_dat_gz, phone_dat_gz_len);
+#ifdef PHONEDATA_GZIP
+            INFO("init by the gzip");
+            this->_data = decompress(phone_dat_gz, phone_dat_gz_len);
+#else
+            INFO("init by the xz");
+            this->_data = decompress(phone_dat_xz, phone_dat_xz_len);
+#endif
             return true;
         }
         catch(std::exception &ex)
@@ -202,7 +217,8 @@ private:
         return n;
     }
 
-    std::vector<uint8_t> decompress_gzip(const unsigned char* data, size_t data_size) 
+#ifdef PHONEDATA_GZIP
+    std::vector<uint8_t> decompress(const unsigned char* data, size_t data_size) 
     {
         z_stream strm;
         strm.zalloc = Z_NULL;
@@ -246,5 +262,55 @@ private:
         inflateEnd(&strm);
         return decompressed_data;
     }
+#else
+    std::vector<uint8_t> decompress(const unsigned char* data, size_t data_size) 
+    {
+        lzma_stream strm = LZMA_STREAM_INIT;
+        lzma_ret ret;
+
+        // 初始化解码器，支持自动检测文件格式
+        ret = lzma_auto_decoder(&strm, UINT64_MAX, 0);
+        if (ret != LZMA_OK) 
+        {
+            throw std::runtime_error("Failed to initialize xz decoder");
+        }
+
+        // 设置输入数据
+        strm.next_in = data;
+        strm.avail_in = data_size;
+
+        std::vector<uint8_t> decompressed_data;
+        const size_t chunk_size = 4096;  // 使用更大的块大小提高效率
+        do 
+        {
+            // 调整输出缓冲区大小
+            size_t old_size = decompressed_data.size();
+            decompressed_data.resize(old_size + chunk_size);
+
+            strm.next_out = &decompressed_data[old_size];
+            strm.avail_out = chunk_size;
+
+            // 执行解压
+            ret = lzma_code(&strm, LZMA_RUN);
+
+            if (ret == LZMA_STREAM_END) 
+            {
+                // 解压完成，调整向量大小为实际数据量
+                decompressed_data.resize(old_size + (chunk_size - strm.avail_out));
+                break;
+            }
+
+            if (ret != LZMA_OK) 
+            {
+                lzma_end(&strm);
+                throw std::runtime_error("xz decompression failed");
+            }
+
+        } while (strm.avail_in > 0);
+
+        lzma_end(&strm);
+        return decompressed_data;
+    } 
+#endif
 };
 }
