@@ -2,7 +2,6 @@
 
 #include <set>
 #include <vector>
-#include <iostream>
 #include <json_serialize.h>
 #include <odb/mysql/traits.hxx>
 
@@ -52,7 +51,6 @@ namespace mysql
                 return;
             }
             auto json = std::string(i.data(), n);
-            INFO(json.data());
             v = serialize::JsonSerializer<value_type>::FromString(json);
         }
         

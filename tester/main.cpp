@@ -6,6 +6,7 @@
 #include "json.h"
 #include "templates.h"
 #include "rabbit_queue.h"
+#include "phonedata.h"
 
 void TestJsonSerialize()
 {
@@ -275,10 +276,39 @@ void TestRabbitMq()
     }
 }
 
+void TestPhoneData()
+{
+    phonedata::PhoneData::Instance()->Start();
+    std::vector<std::string> numbers = {
+        "15695866526",
+        "18069202072",
+        "13819813415",
+        "15306627776",
+        "13355915301",
+        "13262429999",
+        "15824205247",
+        "18167219893",
+        "15968925439",
+        "15051515852",
+        "80901142",
+    };
+    for (const auto &number: numbers)
+    {
+        auto pr = phonedata::PhoneData::Instance()->Find(number);
+        if (!pr)
+        {
+            ERROR("未找到此手机号信息");
+            return;
+        }
+        INFO("[%s][%s-%s][%s]", pr->Number.data(), pr->Province.data(), pr->City.data(), pr->CardType.data());
+    }
+}
+
 int main()
 {
     INFO("测试开始");
-    TestRabbitMq();
+    TestPhoneData();
+    //TestRabbitMq();
     //TestDateTime();
     //TestJsonSerialize();
     //TestParamSerialize();
