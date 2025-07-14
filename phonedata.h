@@ -188,7 +188,8 @@ public:
     }
 private:
     std::vector<uint8_t> _data;
-    int32_t get4(const std::vector<uint8_t>& b, size_t start) {
+    int32_t get4(const std::vector<uint8_t>& b, size_t start) 
+    {
         if (start + 4 > b.size()) 
         {
             return 0;
@@ -199,7 +200,8 @@ private:
             static_cast<int32_t>(b[start + 3]) << 24;
     }
 
-    uint32_t getN(const std::string& s) {
+    uint32_t getN(const std::string& s) 
+    {
         uint32_t n = 0;
         for (char c : s) 
         {
