@@ -7,6 +7,8 @@
 #include "templates.h"
 #include "rabbit_queue.h"
 #include "phonedata.h"
+#include "local_cache.h"
+#include "expire_cache.h"
 
 void TestJsonSerialize()
 {
@@ -304,13 +306,63 @@ void TestPhoneData()
     }
 }
 
+void TestExpireCache()
+{
+    cache::ExpireCache<int64_t, test::SubObject> caches([](const int64_t &key, const std::shared_ptr<test::SubObject> &value, bool is_manual)
+    {
+        INFO("key: %lld, value: %s, is_manual: %d", 
+             key, serialize::JsonSerializer<test::SubObject>::ToString(value).data(), is_manual);
+    }, std::chrono::milliseconds(30000));
+    auto sub1 = std::make_shared<test::SubObject>();
+    sub1->Int32 = 1;
+    sub1->String = "1111";
+    caches.Put(sub1->Int32, sub1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    auto sub2 = std::make_shared<test::SubObject>();
+    sub2->Int32 = 2;
+    sub2->String = "2222";
+    caches.Put(sub2->Int32, sub2);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    auto sub3 = std::make_shared<test::SubObject>();
+    sub3->Int32 = 3;
+    sub3->String = "3333";
+    caches.Put(sub3->Int32, sub3);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    auto sub4 = std::make_shared<test::SubObject>();
+    sub4->Int32 = 4;
+    sub4->String = "4444";
+    caches.Put(sub4->Int32, sub4);
+    caches.Delete(sub1->Int32);
+    while(1)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+}
+
+void TestLocalCache()
+{
+    cache::LocalCache<int64_t, test::SubObject> caches;
+    auto sub1 = std::make_shared<test::SubObject>();
+    sub1->Int32 = 1;
+    sub1->String = "1111";
+    auto itr = caches.Put(sub1->Int32, sub1);
+    INFO("是否存在: %d, value: %s", itr.second, serialize::JsonSerializer<test::SubObject>::ToString(itr.first).data());
+    auto sub2 = std::make_shared<test::SubObject>();
+    sub2->Int32 = 1;
+    sub2->String = "2222";
+    itr = caches.Put(sub1->Int32, sub1);
+    INFO("是否存在: %d, value: %s", itr.second, serialize::JsonSerializer<test::SubObject>::ToString(itr.first).data());
+}
+
 int main()
 {
     INFO("测试开始");
+    //TestLocalCache();
+    TestExpireCache();
     //TestPhoneData();
     //TestRabbitMq();
     //TestDateTime();
-    TestJsonSerialize();
+    //TestJsonSerialize();
     //TestParamSerialize();
     //std::cout << XmlDirectory << std::endl;
     //TestTemplateSerialize();
