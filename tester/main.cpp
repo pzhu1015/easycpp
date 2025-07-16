@@ -9,6 +9,7 @@
 #include "phonedata.h"
 #include "local_cache.h"
 #include "expire_cache.h"
+#include "encoding.h"
 
 void TestJsonSerialize()
 {
@@ -354,11 +355,35 @@ void TestLocalCache()
     INFO("是否存在: %d, value: %s", itr.second, serialize::JsonSerializer<test::SubObject>::ToString(itr.first).data());
 }
 
+void TestEncoding()
+{
+    std::string utf8_data = "【短信测试】 我是普通短信，编码GBK, 没有表情图 end";
+    auto data = encoding::Encoding::GBK->FromUtf8(utf8_data);
+    INFO("[utf8: %d, gbk: %d=50]%s", utf8_data.size(), data.size(), utf8_data.data());
+
+    utf8_data = "[ASCII1] I am normal short message, smpp protocol end";
+    data = encoding::Encoding::ASCII->FromUtf8(utf8_data);
+    INFO("[utf8: %d, ascii: %d=53]%s", utf8_data.size(), data.size(), utf8_data.data());
+
+    utf8_data = "【短信测试】 我是普通短信，编码UCS2, 表情图[🐳][🐠] end";
+    data = encoding::Encoding::UCS2->FromUtf8(utf8_data);
+    INFO("[utf8: %d, ucs2: %d=74]%s", utf8_data.size(), data.size(), utf8_data.data());
+
+    utf8_data = "[LATIN1] I am normal short message, smpp protocol Ó®end";
+    data = encoding::Encoding::LATIN1->FromUtf8(utf8_data);
+    INFO("[utf8: %d, latin1: %d=55]%s", utf8_data.size(), data.size(), utf8_data.data());
+
+    utf8_data = "[GSM7] I am @£$¥èéùìòÇØøÅΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ, smpp protocol end";
+    data = encoding::Encoding::GSM7->FromUtf8(utf8_data);
+    INFO("[utf8: %d, gsm7: %d=74]%s", utf8_data.size(), data.size(), utf8_data.data());
+}
+
 int main()
 {
     INFO("测试开始");
+    TestEncoding();
     //TestLocalCache();
-    TestExpireCache();
+    //TestExpireCache();
     //TestPhoneData();
     //TestRabbitMq();
     //TestDateTime();
