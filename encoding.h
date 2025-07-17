@@ -697,5 +697,5 @@ struct EncodingInitializer
         Encoding::RegisterEncoding(std::make_shared<GSM7>());
         Encoding::RegisterEncoding(std::make_shared<LATIN1>());
     }
-} initializer;
+} encoding_initializer;
 }

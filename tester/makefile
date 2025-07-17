@@ -8,6 +8,7 @@ INCLUDES += -I$(CURDIR)/../../cpp-httplib
 INCLUDES += -I$(CURDIR)/../../picojson
 INCLUDES += -I$(CURDIR)/../../json/single_include
 INCLUDES += -I$(CURDIR)/../../inja/single_include
+INCLUDES += -I$(CURDIR)/../../aho_corasick/src
 
 CC = g++
 #debug -g添加调试信息

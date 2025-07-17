@@ -2,6 +2,7 @@
 #include <chrono>
 #include <inja/inja.hpp>
 #include <shared_mutex>
+#include <aho_corasick/aho_corasick.hpp>
 #include "obj.h"
 #include "json.h"
 #include "templates.h"
@@ -10,6 +11,7 @@
 #include "local_cache.h"
 #include "expire_cache.h"
 #include "encoding.h"
+#include "ratelimit.h"
 
 void TestJsonSerialize()
 {
@@ -281,7 +283,6 @@ void TestRabbitMq()
 
 void TestPhoneData()
 {
-    phonedata::PhoneData::Instance()->Start();
     std::vector<std::string> numbers = {
         "15695866526",
         "18069202072",
@@ -378,10 +379,136 @@ void TestEncoding()
     INFO("[utf8: %d, gsm7: %d=74]%s", utf8_data.size(), data.size(), utf8_data.data());
 }
 
+void TestTrie()
+{
+    aho_corasick::trie trie;
+    trie.insert("韩福才青海");
+    trie.insert("欧阳德广东");
+    trie.insert("韦泽芳海南");
+    trie.insert("铁英北京");
+    trie.insert("辛业江海南");
+    trie.insert("于飞广东");
+    trie.insert("姜殿武河北");
+    trie.insert("cmpp2.0");
+    trie.insert("秦昌典重庆");
+    trie.insert("范广举黑龙江");
+    trie.insert("张凯广东");
+    trie.insert("王厚宏海南");
+    trie.insert("陈维席安徽");
+    trie.insert("王有杰河南");
+    trie.insert("王武龙江苏");
+    trie.insert("米凤君吉林");
+    trie.insert("宋勇辽宁");
+    trie.insert("张家盟浙江");
+    trie.insert("马烈孙宁夏");
+    trie.insert("黄纪诚北京");
+    trie.insert("常征贵州");
+    trie.insert("王式惠重庆");
+    trie.insert("周文吉");
+    trie.insert("王庆录广西");
+    trie.insert("潘广田山东");
+    trie.insert("朱作勇甘肃");
+    trie.insert("孙善武河南");
+    trie.insert("宋晨");
+    trie.insert("梁春禄广西政协");
+    trie.insert("鲁家善中国交通");
+    trie.insert("金德琴中信");
+    trie.insert("李大强神华");
+    trie.insert("吴文英纺织");
+    trie.insert("查克明华能");
+    trie.insert("朱小华光大");
+    trie.insert("高严国家电力");
+    trie.insert("王雪冰");
+    trie.insert("林孔兴");
+    trie.insert("刘金宝");
+    trie.insert("张恩照");
+    trie.insert("陈同海");
+    trie.insert("康日新");
+    trie.insert("王益");
+    trie.insert("张春江");
+    trie.insert("洪清源");
+    trie.insert("平义杰");
+    trie.insert("李恩潮");
+    trie.insert("孙小虹");
+    trie.insert("陈忠");
+    trie.insert("慕绥新");
+    trie.insert("田凤岐");
+    trie.insert("麦崇楷");
+    trie.insert("柴王群");
+    trie.insert("吴振汉");
+    trie.insert("张秋阳");
+    trie.insert("徐衍东");
+    trie.insert("徐发黑龙江");
+    trie.insert("张宗海");
+    trie.insert("丁鑫发");
+    trie.insert("徐国健");
+    trie.insert("李宝金");
+    trie.insert("单平");
+    trie.insert("段义和");
+    trie.insert("荆福生");
+    trie.insert("陈少勇");
+    trie.insert("黄松有");
+    trie.insert("皮黔生");
+    trie.insert("王华元");
+    trie.insert("王守业");
+    trie.insert("刘连昆");
+    trie.insert("孙晋美");
+    trie.insert("邵松高");
+    trie.insert("肖怀枢");
+    trie.insert("刘广智空军");
+    trie.insert("姬胜德总参");
+    trie.insert("廖伯年北京");
+    trie.insert("陈水遍");
+    trie.insert("台湾");
+    trie.insert("发送");
+    trie.insert("竞选");
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int i=0; i < 1; i++)
+    {
+        auto result = trie.parse_text("【中国移动】 陈少勇发送给台湾的短信，陈水遍竞选");
+        if (result.empty())
+        {
+            ERROR("没有匹配到");
+        }
+        for (const auto& emit : result) 
+        {
+            std::cout << "匹配到关键词: " << emit.get_keyword() << "，起始位置: " << emit.get_start() << "，结束位置: " << emit.get_end() << std::endl;
+        }
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Time elapsed: " << std::fixed << std::setprecision(6) 
+        << duration.count() << " seconds" << std::endl;
+}
+
+void TestRateLimit()
+{
+    using namespace ratelimit;
+    std::atomic<int> speed = 0;
+    auto rate = 10000.0;
+    auto burst = 10000;
+    RateLimiter limiter(rate, burst);
+    auto thread = std::thread([&](){
+        while(true)
+        {
+            INFO("speed: %d", speed.load());
+            speed.store(0);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        }
+    });
+    while(true)
+    {
+        speed++;
+        limiter.Wait();
+    }
+}
+
 int main()
 {
     INFO("测试开始");
-    TestEncoding();
+    TestRateLimit();
+    //TestTrie();
+    //TestEncoding();
     //TestLocalCache();
     //TestExpireCache();
     //TestPhoneData();

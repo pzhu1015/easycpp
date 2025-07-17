@@ -316,3 +316,15 @@ private:
 #endif
 };
 }
+
+namespace 
+{
+struct PhoneDataInitializer 
+{
+    PhoneDataInitializer() 
+    {
+        using namespace phonedata;
+        PhoneData::Instance()->Start();
+    }
+} phonedata_initializer;
+}
