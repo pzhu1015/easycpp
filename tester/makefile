@@ -1,4 +1,4 @@
-SERVICE = main.cpp
+SERVICE = main.cpp ../../pugixml/src/pugixml.cpp
 
 
 SERVICE_BIN = tester.exe
@@ -9,6 +9,7 @@ INCLUDES += -I$(CURDIR)/../../picojson
 INCLUDES += -I$(CURDIR)/../../json/single_include
 INCLUDES += -I$(CURDIR)/../../inja/single_include
 INCLUDES += -I$(CURDIR)/../../aho_corasick/src
+INCLUDES += -I$(CURDIR)/../../pugixml/src
 
 CC = g++
 #debug -g添加调试信息

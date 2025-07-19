@@ -5,6 +5,8 @@
 #include <aho_corasick/aho_corasick.hpp>
 #include "obj.h"
 #include "json.h"
+#include "param.h"
+#include "xml.h"
 #include "templates.h"
 #include "rabbit_queue.h"
 #include "phonedata.h"
@@ -163,6 +165,30 @@ void TestParamSerialize()
     auto t5 = serialize::ParamSerializer<test::Object>::FromStringPtr(params);
     auto param5 = serialize::ParamSerializer<test::Object>::ToString(t5);
     std::cout << "param5 = " << param5 << std::endl;
+}
+
+void TestXmlSerialize()
+{
+    test::Extension extension;
+    auto registration = std::make_shared<test::Registration>();
+    registration->CallId = "xxx";
+    extension.Registrations.push_back(registration);
+    auto data = serialize::XmlSerializer<test::Extension>::ToString(extension, true);
+    INFO("\n%s", data.data());
+
+    auto extension1 = serialize::XmlSerializer<test::Extension>::FromStringPtr(data);
+    INFO("%d", extension1->Registrations.size());
+    auto data1 = serialize::XmlSerializer<test::Extension>::ToString(extension1, true);
+    INFO("\n%s", data1.data());
+
+    //test::Gateway gateway;
+    //gateway.Name = "1000";
+    //auto data = serialize::XmlSerializer<test::Gateway>::ToString(gateway, true);
+    //INFO("\n%s", data.data());
+
+    //auto gateway1 = serialize::XmlSerializer<test::Gateway>::FromStringPtr(data);
+    //auto data1 = serialize::XmlSerializer<test::Gateway>::ToString(gateway1, true);
+    //INFO("\n%s", data1.data());
 }
 
 void TestTemplateSerialize()
@@ -506,7 +532,7 @@ void TestRateLimit()
 int main()
 {
     INFO("测试开始");
-    TestRateLimit();
+    //TestRateLimit();
     //TestTrie();
     //TestEncoding();
     //TestLocalCache();
@@ -516,6 +542,7 @@ int main()
     //TestDateTime();
     //TestJsonSerialize();
     //TestParamSerialize();
+    TestXmlSerialize();
     //std::cout << XmlDirectory << std::endl;
     //TestTemplateSerialize();
     return 0;

@@ -96,4 +96,64 @@ public:
     std::shared_ptr<DirectoryInDTO> InDTO;
     std::shared_ptr<test::Account> Account;
 };
+
+class Registration
+{
+public:
+    std::string CallId;
+    std::string User;
+    std::string Contact;
+    std::string Agent;
+    std::string Status;
+    std::string PingStatus;
+    std::string PingTime;
+    std::string Host;
+    std::string NetworkIp;
+    std::string NetworkPort;
+    std::string SipAuthUser;
+    std::string SipAuthRealm;
+    std::string MwiAccount;
+};
+using RegistrationPtr = std::shared_ptr<Registration>;
+
+class Extension
+{
+public:
+    std::vector<RegistrationPtr> Registrations;
+};
+using ExtensionPtr = std::shared_ptr<Extension>;
+
+class Gateway
+{
+public:
+    std::string Name;
+    std::string Profile;
+    std::string Schema;
+    std::string Realm;
+    std::string UserName;
+    std::string Password;
+    std::string From;
+    std::string Contact;
+    std::string Exten;
+    std::string To;
+    std::string Proxy;
+    std::string Context;
+    std::string Expire;
+    std::string Freq;
+    std::string Ping;
+    std::string PingFreq;
+    std::string PingMin;
+    std::string PingCount;
+    std::string PingMax;
+    std::string PintTime;
+    std::string Pinging;
+    std::string State;
+    std::string Status;
+    std::string UpTimeUsec;
+    std::string CallsIn;
+    std::string CallsOut;
+    std::string FailedCallsIn;
+    std::string FailedCallsOut;
+};
 }
+

@@ -1,5 +1,4 @@
 #pragma once
-#include <iostream>
 #include <string>
 #include <memory>
 #include <vector>
@@ -78,25 +77,25 @@ namespace serialize \
 	class JsonSerializer<T>\
 	{\
 	public:\
-		static std::string ToString(const std::shared_ptr<T> &entity, int tab = 0) \
+		static std::string ToString(const std::shared_ptr<T> &entity, bool formatted = false) \
 		{\
             auto json = nlohmann::json::object();\
             FOREACH(JSON_SERIALIZE_ITEM_PTR, __VA_ARGS__);\
-            if (tab == 0)\
+            if (!formatted)\
             {\
                 return json.dump();\
             }\
-            return json.dump(tab);\
+            return json.dump(4);\
         }\
-		static std::string ToString(const T &entity, int tab = 0) \
+		static std::string ToString(const T &entity, bool formatted = false) \
 		{\
             auto json = nlohmann::json::object();\
             FOREACH(JSON_SERIALIZE_ITEM, __VA_ARGS__);\
-            if (tab == 0)\
+            if (!formatted)\
             {\
                 return json.dump();\
             }\
-            return json.dump(tab);\
+            return json.dump(4);\
 		}\
         static ::serialize::Json ToJson(const std::shared_ptr<T> &entity) \
 		{\
@@ -146,11 +145,11 @@ template<class T>
 class JsonSerializer
 {
 public:
-    static std::string ToString(const std::shared_ptr<T> &entity, int tab = 0) 
+    static std::string ToString(const std::shared_ptr<T> &entity, bool formatted = false) 
     {
         return "";
     }
-	static std::string ToString(const T &entity, int tab = 0) 
+	static std::string ToString(const T &entity, bool formatted = false) 
     {
         return std::string();
     }
@@ -188,14 +187,14 @@ template<>
 class JsonSerializer<std::set<std::string>>
 {
 public:
-    static std::string ToString(const std::set<std::string> &entity, int tab = 0)
+    static std::string ToString(const std::set<std::string> &entity, bool formatted = false)
     {
         Json json = entity;
-        if (tab == 0)
+        if (!formatted)
         {
             return json.dump();
         }
-        return json.dump(tab);
+        return json.dump(4);
     }
 
     static Json ToJson(const std::set<std::string> &entity) 
@@ -227,14 +226,14 @@ template<>
 class JsonSerializer<std::vector<std::string>>
 {
 public:
-    static std::string ToString(const std::vector<std::string> &entity, int tab = 0)
+    static std::string ToString(const std::vector<std::string> &entity, bool formatted = false)
     {
         Json json = entity;
-        if (tab == 0)
+        if (!formatted)
         {
             return json.dump();
         }
-        return json.dump(tab);
+        return json.dump(4);
     }
 
     static Json ToJson(const std::vector<std::string> &entity) 
@@ -266,18 +265,18 @@ template<class T>
 class JsonSerializer<std::vector<T>>
 {
 public:
-    static std::string ToString(const std::vector<T> &entity, int tab = 0)
+    static std::string ToString(const std::vector<T> &entity, bool formatted = false)
     {
         auto array = Json::array();
         for (const auto &v : entity)
         {
             array.emplace_back(JsonSerializer<T>::ToJson(v));
         }
-        if (tab == 0)
+        if (!formatted)
         {
             return array.dump();
         }
-        return array.dump(tab);
+        return array.dump(4);
     }
 
     static Json ToJson(const std::vector<T> &entity) 
@@ -324,18 +323,18 @@ template<class T>
 class JsonSerializer<std::vector<std::shared_ptr<T>>>
 {
 public:
-    static std::string ToString(const std::vector<std::shared_ptr<T>> &entity, int tab = 0)
+    static std::string ToString(const std::vector<std::shared_ptr<T>> &entity, bool formatted = false)
     {
         auto array = Json::array();
         for (const auto &v : entity)
         {
             array.emplace_back(JsonSerializer<T>::ToJson(v));
         }
-        if (tab == 0)
+        if (!formatted)
         {
             return array.dump();
         }
-        return array.dump(tab);
+        return array.dump(4);
     }
 
     static Json ToJson(const std::vector<std::shared_ptr<T>> &entity) 
@@ -382,14 +381,14 @@ template<>
 class JsonSerializer<std::list<std::string>>
 {
 public:
-    static std::string ToString(const std::list<std::string> &entity, int tab = 0)
+    static std::string ToString(const std::list<std::string> &entity, bool formatted = false)
     {
         Json json = entity;
-        if (tab == 0)
+        if (!formatted)
         {
             return json.dump();
         }
-        return json.dump(tab);
+        return json.dump(4);
     }
 
     static Json ToJson(const std::list<std::string> &entity) 
@@ -920,7 +919,7 @@ public:
         {
             for (const auto &item : v)
             {
-                value.emplace_back(JsonSerializer<T>::FromJsonPtr(item));
+                value.emplace(JsonSerializer<T>::FromJsonPtr(item));
             }
         }
     }
@@ -935,7 +934,7 @@ public:
         {
             for (const auto &item : v)
             {
-                value.emplace_back(JsonSerializer<T>::FromJson(item));
+                value.emplace(JsonSerializer<T>::FromJson(item));
             }
         }
     }
