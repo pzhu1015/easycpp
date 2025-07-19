@@ -120,7 +120,8 @@ namespace serialize \
 		{\
             auto entity = std::make_shared<T>();\
             ::pugi::xml_document doc;\
-            doc.load_string(str.data());\
+            auto result = doc.load_string(str.data());\
+            if (!result) return nullptr; \
             auto xml = doc.document_element();\
             FOREACH(XML_DESERIALIZE_ITEM_PTR, __VA_ARGS__);\
             return entity;\
@@ -129,7 +130,8 @@ namespace serialize \
 		{\
             T entity;\
             ::pugi::xml_document doc;\
-            doc.load_string(str.data());\
+            auto result = doc.load_string(str.data());\
+            if (!result) return entity; \
             auto xml = doc.document_element();\
             FOREACH(XML_DESERIALIZE_ITEM, __VA_ARGS__);\
             return entity;\
