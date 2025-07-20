@@ -147,38 +147,46 @@ class JsonSerializer
 public:
     static std::string ToString(const std::shared_ptr<T> &entity, bool formatted = false) 
     {
+        ERROR("ShouldNeverComeHere");
         return "";
     }
 	static std::string ToString(const T &entity, bool formatted = false) 
     {
+        ERROR("ShouldNeverComeHere");
         return std::string();
     }
     static Json ToJson(const std::shared_ptr<T> &entity) 
     {
+        ERROR("ShouldNeverComeHere");
         return Json();
     }
     static Json ToJson(const T &entity) 
     {
+        ERROR("ShouldNeverComeHere");
         return Json();
     }
 
     static std::shared_ptr<T> FromStringPtr(const std::string &str)
     {
+        ERROR("ShouldNeverComeHere");
         return nullptr;
     }
 
     static T FromString(const std::string &str)
     {
+        ERROR("ShouldNeverComeHere");
         return T();
     }
 
     static std::shared_ptr<T> FromJsonPtr(const Json &json) 
     {
+        ERROR("ShouldNeverComeHere");
         return nullptr;
     }
 
     static T FromJson(const Json &json) 
     {
+        ERROR("ShouldNeverComeHere");
         return T();
     }
 };
