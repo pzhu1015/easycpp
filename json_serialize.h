@@ -147,47 +147,47 @@ class JsonSerializer
 public:
     static std::string ToString(const std::shared_ptr<T> &entity, bool formatted = false) 
     {
-        ERROR("ShouldNeverComeHere");
-        return "";
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_JSON(), type: " + type_name<T>());
     }
 	static std::string ToString(const T &entity, bool formatted = false) 
     {
-        ERROR("ShouldNeverComeHere");
-        return std::string();
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_JSON(), type: " + type_name<T>());
     }
     static Json ToJson(const std::shared_ptr<T> &entity) 
     {
-        ERROR("ShouldNeverComeHere");
-        return Json();
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_JSON(), type: " + type_name<T>());
     }
     static Json ToJson(const T &entity) 
     {
-        ERROR("ShouldNeverComeHere");
-        return Json();
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_JSON(), type: " + type_name<T>());
     }
 
     static std::shared_ptr<T> FromStringPtr(const std::string &str)
     {
-        ERROR("ShouldNeverComeHere");
-        return nullptr;
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_JSON(), type: " + type_name<T>());
     }
 
     static T FromString(const std::string &str)
     {
-        ERROR("ShouldNeverComeHere");
-        return T();
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_JSON(), type: " + type_name<T>());
     }
 
     static std::shared_ptr<T> FromJsonPtr(const Json &json) 
     {
-        ERROR("ShouldNeverComeHere");
-        return nullptr;
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_JSON(), type: " + type_name<T>());
     }
 
     static T FromJson(const Json &json) 
     {
-        ERROR("ShouldNeverComeHere");
-        return T();
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_JSON(), type: " + type_name<T>());
     }
 };
 
@@ -685,6 +685,7 @@ public:
     static void DeSerialize(std::string &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_string())
         {
@@ -697,6 +698,7 @@ public:
     static DeSerialize(T &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && (v.is_boolean() || v.is_number()))
         {
@@ -709,6 +711,7 @@ public:
     static DeSerialize(T &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_number())
         {
@@ -722,6 +725,7 @@ public:
     static DeSerialize(std::shared_ptr<T> &value, const std::string &name, const Json &json) 
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_object())
         {
@@ -735,6 +739,7 @@ public:
     static DeSerialize(T &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && (v.is_object() || v.is_string()))
         {
@@ -748,6 +753,7 @@ public:
     static DeSerialize(T &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_number())
         {
@@ -758,6 +764,7 @@ public:
     static void DeSerialize(std::vector<std::string> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -770,6 +777,7 @@ public:
     static DeSerialize(std::vector<T> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -782,6 +790,7 @@ public:
     static DeSerialize(std::vector<T> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -794,6 +803,7 @@ public:
     static DeSerialize(std::vector<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -809,6 +819,7 @@ public:
     static DeSerialize(std::vector<T> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -822,6 +833,7 @@ public:
     static void DeSerialize(std::list<std::string> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -834,6 +846,7 @@ public:
     static DeSerialize(std::list<T> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -846,6 +859,7 @@ public:
     static DeSerialize(std::list<T> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -858,6 +872,7 @@ public:
     static DeSerialize(std::list<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -873,6 +888,7 @@ public:
     static DeSerialize(std::list<T> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -886,6 +902,7 @@ public:
     static void DeSerialize(std::set<std::string> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -898,6 +915,7 @@ public:
     static DeSerialize(std::set<T> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -910,6 +928,7 @@ public:
     static DeSerialize(std::set<T> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -922,6 +941,7 @@ public:
     static DeSerialize(std::set<std::shared_ptr<T>> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {
@@ -937,6 +957,7 @@ public:
     static DeSerialize(std::set<T> &value, const std::string &name, const Json &json)
     {
         INFO("[%s][name: %s][value: %s]", __func__, name.data(), type_name<decltype(value)>().data());
+        if (!json.contains(name)) return;
         const Json &v = json[name];
         if (!v.is_null() && v.is_array())
         {

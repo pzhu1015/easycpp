@@ -197,42 +197,49 @@ class XmlSerializer
 public:
     static std::string ToString(const std::shared_ptr<T> &entity, bool formatted = false) 
     {
-        return "";
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_XML(), type: " + type_name<T>());
     }
 	static std::string ToString(const T &entity, bool formatted = false) 
     {
-        return std::string();
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_XML(), type: " + type_name<T>());
     }
     static Xml ToXml(const std::shared_ptr<T> &entity) 
     {
-        return Xml();
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_XML(), type: " + type_name<T>());
     }
     static Xml ToXml(const T &entity) 
     {
-        return Xml();
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_XML(), type: " + type_name<T>());
     }
 
     static std::shared_ptr<T> FromStringPtr(const std::string &str)
     {
-        return nullptr;
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_XML(), type: " + type_name<T>());
     }
 
     static T FromString(const std::string &str)
     {
-        return T();
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_XML(), type: " + type_name<T>());
     }
 
     static std::shared_ptr<T> FromXmlPtr(const Xml &xml) 
     {
-        return nullptr;
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_XML(), type: " + type_name<T>());
     }
 
     static T FromXml(const Xml &xml) 
     {
-        return T();
+        ERROR("ShouldNeverComeHere[%s]", type_name<T>().data());
+        throw std::runtime_error("no implemented yet, REGIST_MEMBER_XML(), type: " + type_name<T>());
     }
 };
-
 
 class XmlSerialize
 {
