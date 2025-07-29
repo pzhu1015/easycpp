@@ -80,6 +80,11 @@ public:
     // 检查是否为零值
     bool IsZero() const { return is_zero_; }
 
+    operator std::string() const
+    {
+        return ToString();
+    }
+
     // 比较操作符（零值视为最小时间）
     bool operator<(const DateTime& other) const 
     {
