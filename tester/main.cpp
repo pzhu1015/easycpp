@@ -3,6 +3,9 @@
 #include <inja/inja.hpp>
 #include <shared_mutex>
 #include <aho_corasick/aho_corasick.hpp>
+#include <cppjieba/Jieba.hpp>
+#include <fasttext/fasttext.h>
+#include "fasttext.h"
 #include "obj.h"
 #include "json.h"
 #include "param.h"
@@ -529,9 +532,151 @@ void TestRateLimit()
     }
 }
 
+void TestJieba()
+{
+    //cppjieba::Jieba jieba;
+    cppjieba::Jieba jieba(
+        "/root/fs/sources/cppjieba/dict/jieba.dict.utf8",
+        "/root/fs/sources/cppjieba/dict/hmm_model.utf8",
+        "/root/fs/sources/cppjieba/dict/user.dict.utf8",
+        "/root/fs/sources/cppjieba/dict/idf.utf8",
+        "/root/fs/sources/cppjieba/dict/stop_words.utf8");
+    std::vector<std::string> words;
+    std::vector<cppjieba::Word> jiebawords;
+    std::string s = "他来到了网易杭研大厦";
+    std::cout << s << std::endl;
+    std::cout << "[demo] Cut With HMM" << std::endl;
+    jieba.Cut(s, words, true);
+    std::cout << words << std::endl;
+
+    std::cout << "[demo] Cut Without HMM " << std::endl;
+    jieba.Cut(s, words, false);
+    std::cout << words << std::endl;
+
+    s = "我来到北京清华大学";
+    std::cout << s << std::endl;
+    std::cout << "[demo] CutAll" << std::endl;
+    jieba.CutAll(s, words);
+    std::cout << words << std::endl;
+
+    s = "小明硕士毕业于中国科学院计算所，后在日本京都大学深造";
+    std::cout << s << std::endl;
+    std::cout << "[demo] CutForSearch" << std::endl;
+    jieba.CutForSearch(s, words);
+    std::cout << words << std::endl;
+
+    std::cout << "[demo] Insert User Word" << std::endl;
+    jieba.Cut("男默女泪", words);
+    std::cout << words << std::endl;
+    jieba.InsertUserWord("男默女泪");
+    jieba.Cut("男默女泪", words);
+    std::cout << words << std::endl;
+
+    std::cout << "[demo] CutForSearch Word With Offset" << std::endl;
+    jieba.CutForSearch(s, jiebawords, true);
+    std::cout << jiebawords << std::endl;
+
+    std::cout << "[demo] Lookup Tag for Single Token" << std::endl;
+    const int DemoTokenMaxLen = 32;
+    char DemoTokens[][DemoTokenMaxLen] = {"拖拉机", "CEO", "123", "。"};
+    std::vector<std::pair<std::string, std::string> > LookupTagres(sizeof(DemoTokens) / DemoTokenMaxLen);
+    std::vector<std::pair<std::string, std::string> >::iterator it;
+    for (it = LookupTagres.begin(); it != LookupTagres.end(); it++) {
+        it->first = DemoTokens[it - LookupTagres.begin()];
+        it->second = jieba.LookupTag(it->first);
+
+    }
+    std::cout << LookupTagres << std::endl;
+
+    std::cout << "[demo] Tagging" << std::endl;
+    std::vector<std::pair<std::string, std::string> > tagres;
+    s = "我是拖拉机学院手扶拖拉机专业的。不用多久，我就会升职加薪，当上CEO，走上人生巅峰。";
+    jieba.Tag(s, tagres);
+    std::cout << s << std::endl;
+    std::cout << tagres << std::endl;
+
+    std::cout << "[demo] Keyword Extraction" << std::endl;
+    const size_t topk = 5;
+    std::vector<cppjieba::KeywordExtractor::Word> keywordres;
+    jieba.extractor.Extract(s, keywordres, topk);
+    std::cout << s << std::endl;
+    std::cout << keywordres << std::endl;
+
+    std::cout << "[demo] Keyword Extraction2" << std::endl;
+    std::vector<std::pair<std::string, double>> keywordres2;
+    jieba.extractor.Extract(s, keywordres2, topk);
+    std::cout << s << std::endl;
+    std::cout << keywordres2 << std::endl;
+}
+
+void TestFastText() {
+    // 初始化Jieba分词器
+    cppjieba::Jieba jieba(
+        "/root/fs/sources/cppjieba/dict/jieba.dict.utf8",
+        "/root/fs/sources/cppjieba/dict/hmm_model.utf8",
+        "/root/fs/sources/cppjieba/dict/user.dict.utf8",
+        "/root/fs/sources/cppjieba/dict/idf.utf8",
+        "/root/fs/sources/cppjieba/dict/stop_words.utf8");
+    
+    // 定义两组关键词
+    std::vector<std::string> keys1 = {"我想看一下你们产品", "我能看一下吗", "看一下", "了解一下"};
+    std::vector<std::string> keys2 = {"不用了", "不好意思", "不要骚扰我", "不想了解"};
+    
+    // 待分析的文本内容
+    std::string content = "我想看一下你们的产品";
+    
+    // 加载FastText模型
+    fasttext::FastText model;
+    model.loadModel("pytorch_model.bin");
+    // 验证模型信息
+    std::cout << "模型信息:\n";
+    std::cout << "维度: " << model.getDimension() << "\n";
+    std::cout << "词表大小: " << model.getDictionary()->nwords() << "\n";
+    std::cout << "是否量化: " << model.isQuant() << "\n";
+    int dim = model.getDimension();
+    
+    // 获取content的向量表示
+    fasttext::Vector contentVec = getTextVector(model, content, jieba);
+    
+    //// 计算keys1组的平均向量
+    //fasttext::Vector keys1Vec(dim);
+    //keys1Vec.zero();
+    //for (const auto& key : keys1) {
+    //    //fasttext::Vector keyVec(dim);
+    //    //model.getWordVector(keyVec, key);
+    //    fasttext::Vector keyVec = getTextVector(model, key, jieba);
+    //    keys1Vec.addVector(keyVec);
+    //}
+    //keys1Vec.mul(1.0f / keys1.size());
+    //
+    //// 计算keys2组的平均向量
+    //fasttext::Vector keys2Vec(dim);
+    //keys2Vec.zero();
+    //for (const auto& key : keys2) {
+    //    //fasttext::Vector keyVec(dim);
+    //    //model.getWordVector(keyVec, key);
+    //    fasttext::Vector keyVec = getTextVector(model, key, jieba);
+    //    keys2Vec.addVector(keyVec);
+    //}
+    //keys2Vec.mul(1.0f / keys2.size());
+    
+    // 计算相似度
+    //float sim1 = cosineSimilarity(contentVec, keys1Vec);
+    //float sim2 = cosineSimilarity(contentVec, keys2Vec);
+    float sim1 = maxSimilarity(model, contentVec, keys1, jieba);
+    float sim2 = maxSimilarity(model, contentVec, keys2, jieba);
+    
+    // 输出结果
+    std::cout << "文本内容: \"" << content << "\"" << std::endl;
+    std::cout << "与肯定词组相似度: " << sim1 << std::endl;
+    std::cout << "与不肯定词组相似度: " << sim2 << std::endl;
+}
+
 int main()
 {
     INFO("测试开始");
+    TestFastText();
+    //TestJieba();
     //TestRateLimit();
     //TestTrie();
     //TestEncoding();
@@ -542,7 +687,7 @@ int main()
     //TestDateTime();
     //TestJsonSerialize();
     //TestParamSerialize();
-    TestXmlSerialize();
+    //TestXmlSerialize();
     //std::cout << XmlDirectory << std::endl;
     //TestTemplateSerialize();
     return 0;
